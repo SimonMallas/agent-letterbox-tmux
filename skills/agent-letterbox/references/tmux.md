@@ -1,5 +1,10 @@
-# tmux reference
+# tmux doorbell
 
-The tmux adapter uses configured live session names and, with `LETTERBOX_TMUX_SUBMIT=1`, sends the standardized doorbell through `tmux send-keys` plus Enter.
+Automatic live doorbells use the `adapters/tmux.sh` adapter.
 
-It has the same dedicated-terminal safety requirement as cmux: input injection can submit text already present in the target terminal buffer.
+Lookup order:
+
+1. Live registry (`LETTERBOX_TMUX_REGISTRY`, default `$LETTERBOX_DIR/tmux-agents.tsv`) from `letterbox tmux run` / `register`
+2. Static patterns (`LETTERBOX_TMUX_PATTERNS`)
+
+Submit is opt-in via `LETTERBOX_TMUX_SUBMIT=1`. Input injection can submit text already present in the target terminal buffer — use dedicated agent panes only.

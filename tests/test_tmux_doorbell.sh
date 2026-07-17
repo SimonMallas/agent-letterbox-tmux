@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Live disposable tmux proof for the opt-in automatic doorbell.
+# Live disposable tmux proof for the opt-in automatic doorbell (static patterns).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"

@@ -33,47 +33,69 @@ frontmatter_value() {
   ' "$1"
 }
 canonical_dir() { (cd "$1" && pwd -P); }
-cmux_registry_path() { printf '%s' "${LETTERBOX_CMUX_REGISTRY:-$BOX/cmux-agents.tsv}"; }
+tmux_registry_path() { printf '%s' "${LETTERBOX_TMUX_REGISTRY:-$BOX/tmux-agents.tsv}"; }
+tmux_patterns_path() { printf '%s' "${LETTERBOX_TMUX_PATTERNS:-$BOX/tmux-patterns.tsv}"; }
 
-cmd_cmux_register() {
-  local agent="${1:?usage: letterbox cmux register <agent>}" registry surface owner tmp
-  need_agent "$agent"
-  command -v cmux >/dev/null 2>&1 || die 'cmux is unavailable'
-  surface="${CMUX_SURFACE_ID:-}"
-  [[ "$surface" =~ ^surface:[0-9]+$ ]] || die 'run registration from inside the agent cmux terminal (CMUX_SURFACE_ID is missing)'
-  cmux tree --all 2>/dev/null | grep -F "$surface" >/dev/null || die "current surface is not live: $surface"
-  mkdir -p "$BOX/$agent/inbox" "$BOX/$agent/processed" "$BOX/locks"
-  registry="$(cmux_registry_path)"
-  mkdir -p "$(dirname "$registry")"
-  if [[ -f "$registry" ]]; then
-    owner="$(awk -F '\t' -v surface="$surface" '$2 == surface { print $1; exit }' "$registry")"
-    [[ -z "$owner" || "$owner" == "$agent" ]] || die "surface $surface is already registered to $owner"
-  fi
-  tmp="$(mktemp "$(dirname "$registry")/.cmux-agents.tmp.XXXXXX")"
-  [[ -f "$registry" ]] && awk -F '\t' -v agent="$agent" '$1 != agent { print }' "$registry" > "$tmp"
-  printf '%s\t%s\t%s\n' "$agent" "$surface" "$(now)" >> "$tmp"
-  mv "$tmp" "$registry"
-  printf 'registered: %s → %s\n' "$agent" "$surface"
+# Current pane target when running inside tmux (precise doorbell injection).
+tmux_current_target() {
+  [[ -n "${TMUX:-}" ]] || return 1
+  command -v tmux >/dev/null 2>&1 || return 1
+  tmux display-message -p '#{pane_id}' 2>/dev/null
 }
 
-cmd_cmux_status() {
-  local registry="$(cmux_registry_path)"
-  [[ -f "$registry" ]] || { printf 'no cmux registrations: %s\n' "$registry"; return; }
+tmux_target_live() {
+  local target="$1"
+  [[ -n "$target" ]] || return 1
+  command -v tmux >/dev/null 2>&1 || return 1
+  # Pane id (%N) or session/window.pane name.
+  if [[ "$target" == %* ]]; then
+    tmux list-panes -a -F '#{pane_id}' 2>/dev/null | grep -Fx "$target" >/dev/null
+  else
+    tmux has-session -t "$target" 2>/dev/null
+  fi
+}
+
+cmd_tmux_register() {
+  local agent="${1:?usage: letterbox tmux register <agent>}" registry target owner tmp session
+  need_agent "$agent"
+  command -v tmux >/dev/null 2>&1 || die 'tmux is unavailable'
+  target="$(tmux_current_target)" || die 'run registration from inside a tmux pane (TMUX is unset)'
+  [[ -n "$target" ]] || die 'could not resolve current tmux pane id'
+  session="$(tmux display-message -p '#S' 2>/dev/null || true)"
+  mkdir -p "$BOX/$agent/inbox" "$BOX/$agent/processed" "$BOX/locks"
+  registry="$(tmux_registry_path)"
+  mkdir -p "$(dirname "$registry")"
+  if [[ -f "$registry" ]]; then
+    owner="$(awk -F '\t' -v target="$target" '$2 == target { print $1; exit }' "$registry")"
+    [[ -z "$owner" || "$owner" == "$agent" ]] || die "tmux target $target is already registered to $owner"
+  fi
+  tmp="$(mktemp "$(dirname "$registry")/.tmux-agents.tmp.XXXXXX")"
+  [[ -f "$registry" ]] && awk -F '\t' -v agent="$agent" '$1 != agent { print }' "$registry" > "$tmp"
+  # agent<TAB>pane_id<TAB>session_name<TAB>registered_at
+  printf '%s\t%s\t%s\t%s\n' "$agent" "$target" "${session:-}" "$(now)" >> "$tmp"
+  mv "$tmp" "$registry"
+  printf 'registered: %s → %s (session %s)\n' "$agent" "$target" "${session:-(unknown)}"
+}
+
+cmd_tmux_status() {
+  local registry="$(tmux_registry_path)"
+  [[ -f "$registry" ]] || { printf 'no tmux registrations: %s\n' "$registry"; return; }
+  printf 'agent\ttarget\tsession\tregistered_at\n'
   cat "$registry"
 }
 
-cmd_cmux_unregister() {
-  local agent="${1:?usage: letterbox cmux unregister <agent>}" registry tmp
+cmd_tmux_unregister() {
+  local agent="${1:?usage: letterbox tmux unregister <agent>}" registry tmp
   need_agent "$agent"
-  registry="$(cmux_registry_path)"
-  [[ -f "$registry" ]] || { printf 'no cmux registration for %s\n' "$agent"; return; }
-  tmp="$(mktemp "$(dirname "$registry")/.cmux-agents.tmp.XXXXXX")"
+  registry="$(tmux_registry_path)"
+  [[ -f "$registry" ]] || { printf 'no tmux registration for %s\n' "$agent"; return; }
+  tmp="$(mktemp "$(dirname "$registry")/.tmux-agents.tmp.XXXXXX")"
   awk -F '\t' -v agent="$agent" '$1 != agent { print }' "$registry" > "$tmp"
   mv "$tmp" "$registry"
   printf 'unregistered: %s\n' "$agent"
 }
 
-cmd_cmux_setup() {
+cmd_tmux_setup() {
   local agents='' setup_dir="$HOME/.agent-letterbox" submit=false
   local skill_source="$SCRIPT_DIR/../skills/agent-letterbox"
   local skills_dir="${LETTERBOX_SKILLS_DIR:-$HOME/.agents/skills}" skill_target
@@ -83,12 +105,12 @@ cmd_cmux_setup() {
       --agents) agents="${2:?missing comma-separated agent list}"; shift;;
       --dir) setup_dir="${2:?missing directory}"; shift;;
       --submit|--automatic-doorbells) submit=true;;
-      *) die "usage: letterbox cmux setup --agents pi,claude [--dir <path>] [--automatic-doorbells]";;
+      *) die "usage: letterbox tmux setup --agents pi,claude,grok,hermes [--dir <path>] [--automatic-doorbells]";;
     esac
     shift
   done
-  [[ -n "$agents" ]] || die 'cmux setup requires --agents'
-  command -v cmux >/dev/null 2>&1 || die 'cmux is unavailable'
+  [[ -n "$agents" ]] || die 'tmux setup requires --agents'
+  command -v tmux >/dev/null 2>&1 || die 'tmux is unavailable'
   [[ -f "$skill_source/SKILL.md" ]] || die "bundled skill missing: $skill_source"
   local agent
   IFS=',' read -r -a agent_list <<< "$agents"
@@ -98,13 +120,19 @@ cmd_cmux_setup() {
   mkdir -p "$BOX" "$BOX/locks" "$(dirname "$DEFAULT_DIR_FILE")" "$launcher_dir"
   cmd_init "${agent_list[@]}" >/dev/null
   printf '%s\n' "$BOX" > "$DEFAULT_DIR_FILE"
-  : > "$BOX/cmux-agents.tsv"
+  : > "$BOX/tmux-agents.tsv"
+  if [[ ! -f "$BOX/tmux-patterns.tsv" ]]; then
+    cat > "$BOX/tmux-patterns.tsv" <<'PAT'
+# Optional static fallback: agent<TAB>tmux-session-name
+# Live self-registration (letterbox tmux run/register) is preferred.
+PAT
+  fi
   mkdir -p "$skills_dir"
   skill_target="$skills_dir/agent-letterbox"
   launcher_target="$launcher_dir/letterbox"
   if [[ -e "$launcher_target" || -L "$launcher_target" ]]; then
     if [[ -L "$launcher_target" && "$(readlink "$launcher_target")" == "$SCRIPT_DIR/letterbox" ]]; then
-      : # Already installed by this checkout.
+      :
     else
       die "letterbox launcher already exists at $launcher_target; move it or set LETTERBOX_BIN_DIR"
     fi
@@ -113,7 +141,7 @@ cmd_cmux_setup() {
   fi
   if [[ -e "$skill_target" || -L "$skill_target" ]]; then
     if [[ -L "$skill_target" && "$(readlink "$skill_target")" == "$skill_source" ]]; then
-      : # Already installed by this checkout.
+      :
     else
       die "agent-letterbox skill already exists at $skill_target; move it or set LETTERBOX_SKILLS_DIR"
     fi
@@ -121,57 +149,70 @@ cmd_cmux_setup() {
     ln -s "$skill_source" "$skill_target"
   fi
   cat > "$BOX/env.sh" <<EOF
-# Generated by: letterbox cmux setup
+# Generated by: letterbox tmux setup
 export LETTERBOX_DIR='$BOX'
-export LETTERBOX_DOORBELL='$SCRIPT_DIR/../adapters/cmux.sh'
-export LETTERBOX_CMUX_REGISTRY='$BOX/cmux-agents.tsv'
+export LETTERBOX_DOORBELL='$SCRIPT_DIR/../adapters/tmux.sh'
+export LETTERBOX_TMUX_REGISTRY='$BOX/tmux-agents.tsv'
+export LETTERBOX_TMUX_PATTERNS='$BOX/tmux-patterns.tsv'
 export AGENT_LETTERBOX_SKILL='$skill_target'
 EOF
-  [[ "$submit" == true ]] && printf 'export LETTERBOX_CMUX_SUBMIT=1\n' >> "$BOX/env.sh"
+  [[ "$submit" == true ]] && printf 'export LETTERBOX_TMUX_SUBMIT=1\n' >> "$BOX/env.sh"
   cat > "$BOX/AGENT-LETTERBOX.md" <<'EOF'
-# Agent Letterbox startup rule
+# Agent Letterbox startup rule (tmux)
 
-The shared Agent Letterbox skill is installed at `~/.agents/skills/agent-letterbox` (or the configured `LETTERBOX_SKILLS_DIR`). Ensure your agent runtime loads global Agent Skills.
+The shared Agent Letterbox skill is installed at `~/.agents/skills/agent-letterbox`
+(or the configured `LETTERBOX_SKILLS_DIR`). Ensure your agent runtime loads global Agent Skills.
 
-Run at terminal startup/resume:
+You control your own tmux layout. Launch each agent inside the pane you choose:
 
 ```bash
-letterbox cmux register <your-agent-id>
+source ~/.agent-letterbox/env.sh   # or your LETTERBOX_DIR/env.sh
+letterbox tmux run <your-agent-id> -- <agent-command>
+```
+
+That registers the current pane for live doorbells, then starts the agent.
+
+At resume, if the pane id changed:
+
+```bash
+letterbox tmux register <your-agent-id>
 letterbox check
 ```
 
 For actionable letters, use `letterbox reply` with body text piped on stdin.
 Use `--now` on a reply only when the original letter priority is `now`.
 EOF
-  printf 'cmux team ready: %s\n' "$BOX"
+  printf 'tmux team ready: %s\n' "$BOX"
   printf 'Letterbox launcher linked: %s\n' "$launcher_target"
   printf 'Agent Letterbox skill linked: %s\n' "$skill_target"
-  printf 'Launch each agent inside any cmux pane/workspace with:\n'
-  printf '  letterbox cmux run <agent-id> -- <agent-command>\n'
+  printf 'Source the environment:\n  source %s/env.sh\n' "$BOX"
+  printf 'In each agent pane, launch with:\n'
+  printf '  letterbox tmux run <agent-id> -- <agent-command>\n'
   [[ "$submit" == true ]] || printf 'Automatic input is off. Re-run with --automatic-doorbells to enable it.\n'
 }
 
-cmd_cmux_run() {
-  local agent="${1:?usage: letterbox cmux run <agent> -- <command...>}"; shift
+cmd_tmux_run() {
+  local agent="${1:?usage: letterbox tmux run <agent> -- <command...>}"; shift
   need_agent "$agent"
-  [[ "${1:-}" == -- ]] || die 'cmux run requires -- before the agent command'
+  [[ "${1:-}" == -- ]] || die 'tmux run requires -- before the agent command'
   shift
-  [[ $# -gt 0 ]] || die 'cmux run requires an agent command'
-  [[ -f "$BOX/env.sh" ]] && source "$BOX/env.sh"
+  [[ $# -gt 0 ]] || die 'tmux run requires an agent command'
+  [[ -f "$BOX/env.sh" ]] && # shellcheck disable=SC1090
+    source "$BOX/env.sh"
   BOX="${LETTERBOX_DIR:-$BOX}"
   export LETTERBOX_DIR="$BOX" LETTERBOX_AGENT="$agent"
-  cmd_cmux_register "$agent"
+  cmd_tmux_register "$agent"
   exec "$@"
 }
 
-cmd_cmux() {
+cmd_tmux() {
   case "${1:-}" in
-    setup) shift; cmd_cmux_setup "$@";;
-    run) shift; cmd_cmux_run "$@";;
-    register) shift; cmd_cmux_register "$@";;
-    unregister) shift; cmd_cmux_unregister "$@";;
-    status) shift; cmd_cmux_status "$@";;
-    *) die 'usage: letterbox cmux {setup|run|register|unregister|status} ...';;
+    setup) shift; cmd_tmux_setup "$@";;
+    run) shift; cmd_tmux_run "$@";;
+    register) shift; cmd_tmux_register "$@";;
+    unregister) shift; cmd_tmux_unregister "$@";;
+    status) shift; cmd_tmux_status "$@";;
+    *) die 'usage: letterbox tmux {setup|run|register|unregister|status} ...';;
   esac
 }
 
@@ -345,6 +386,6 @@ case "${1:-}" in
   --version|-V|version) cmd_version;;
   init) shift; cmd_init "$@";; send) shift; cmd_send "$@";; check) shift; cmd_check "$@";;
   reply) shift; cmd_reply "$@";; done) shift; cmd_done "$@";; lock) shift; cmd_lock "$@";; unlock) shift; cmd_unlock "$@";;
-  status) shift; cmd_status "$@";; cmux) shift; cmd_cmux "$@";;
-  *) printf 'usage: letterbox {init|send|check|reply|done|lock|unlock|status|cmux|--version} ...\n\ncmux: setup | run | register | unregister | status\n' >&2; exit 2;;
+  status) shift; cmd_status "$@";; tmux) shift; cmd_tmux "$@";;
+  *) printf 'usage: letterbox {init|send|check|reply|done|lock|unlock|status|tmux|--version} ...\n\ntmux: setup | run | register | unregister | status\n' >&2; exit 2;;
 esac

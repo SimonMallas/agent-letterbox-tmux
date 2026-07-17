@@ -6,19 +6,19 @@ Agent Letterbox for tmux is a filesystem-first coordination system for live tmux
 
 **Supported:**
 
-- Durable Markdown letters, reply-first handling, atomic publication, and advisory locks.
-- Automatic opt-in tmux `send-keys` doorbells to configured live sessions.
-- Local and SSH/headless tmux workflows where users arrange tmux sessions themselves.
+- Durable Markdown letters, reply-first handling, atomic publication, and advisory locks
+- `letterbox tmux setup` / `run` / `register` bootstrap with live pane registry
+- Automatic opt-in tmux `send-keys` doorbells (registry first, static patterns fallback)
+- Local and SSH/headless tmux workflows where users arrange tmux sessions themselves
 
 **Not supported:**
 
-- cmux integration (maintained separately in `agent-letterbox-cmux`).
-- Autonomous desktop-agent turns, webhooks, persistent watchers, relay services, or required daemons.
-- Multi-machine file transport; SSH access alone does not synchronize Letterbox files.
+- cmux integration (separate product tree)
+- Autonomous desktop-agent turns, webhooks, persistent watchers, relay services, or required daemons
+- Multi-machine file transport; SSH access alone does not synchronize Letterbox files
 
 ## Next milestones
 
-1. Add tmux setup/run bootstrap parity with the cmux repository.
-2. Dogfood with real tmux agent sessions, including SSH/headless use cases.
-3. Review/import approved visual identity assets.
-4. Prepare a separate public v0.1 release.
+1. Dogfood with real multi-agent tmux sessions, including SSH/headless use cases
+2. Review/import approved visual identity assets
+3. Prepare a separate public v0.1 release

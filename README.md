@@ -1,64 +1,102 @@
 # Agent Letterbox for tmux
 
-## Ring the agent. Keep the message.
+## Ring the agent. Keep the message. Work as a team.
 
 **Agent Letterbox for tmux turns separate coding-agent terminals into a live team.**
 
-A message is saved safely on disk. When the recipient is live, tmux sends one short instruction into its terminal:
+A message is saved safely on disk. When the recipient is live, tmux sends one short instruction into its pane:
 
 ```text
-📬 letterbox doorbell: check your inbox
+📬 letterbox doorbell: unacked delegate in <letterbox>/<agent>/inbox/ — please check
 ```
 
 The agent checks the durable message, replies, and hands work onward.
 
-> **Agent mail that waits safely—and a bell brings it alive.**
+> **The doorbell makes you a team.**
 
-## What this opens up
+## What you need
 
-- Near-instant coordination between live tmux agents
-- Durable agent-to-agent handoffs without human copy/paste
-- Sessions that can run locally, over SSH, or on headless systems
-- Durable letters that survive a disconnected or closed terminal
+- Bash, Git, and **tmux**
+- Agents you already run in terminals (Claude Code, Pi, Grok, Hermes, …)
 
-The automatic doorbell in this repository is **tmux only**. Ordinary terminals and desktop apps still receive durable mail, but need a manual/session-start check.
+No servers. No desktop app. No cmux. No webhooks.
 
-## Quick start
-
-You need Bash, Git, and tmux.
+## Install (copy / paste)
 
 ```bash
 git clone https://github.com/SimonMallas/agent-letterbox-tmux.git \
   ~/Developer/agent-letterbox-tmux
 cd ~/Developer/agent-letterbox-tmux
+
 chmod +x bin/letterbox adapters/*.sh tests/*.sh
 export PATH="$PWD/bin:$PATH"
 
-export LETTERBOX_DIR="$HOME/.agent-letterbox"
-letterbox init pi claude grok hermes
+# One-time team bootstrap (creates ~/.agent-letterbox and links the CLI)
+letterbox tmux setup --agents pi,claude,grok,hermes --automatic-doorbells
+source ~/.agent-letterbox/env.sh
 ```
 
-Create the tmux session mapping:
+Check:
 
 ```bash
-printf 'pi\tpi-session\nclaude\tclaude-session\n' \
-  > "$LETTERBOX_DIR/tmux-patterns.tsv"
-
-export LETTERBOX_DOORBELL="$PWD/adapters/tmux.sh"
-export LETTERBOX_TMUX_PATTERNS="$LETTERBOX_DIR/tmux-patterns.tsv"
-export LETTERBOX_TMUX_SUBMIT=1
+letterbox --version
+echo "$LETTERBOX_DIR"
 ```
 
-Launch agents in tmux sessions named to match the mapping, then send a live handoff:
+## Launch agents (you choose the panes)
+
+Create any tmux layout you like. In **each agent pane**:
 
 ```bash
+source ~/.agent-letterbox/env.sh
+
+letterbox tmux run pi -- pi
+# other panes:
+letterbox tmux run claude -- claude
+letterbox tmux run grok -- grok
+letterbox tmux run hermes -- hermes chat
+```
+
+`tmux run` registers that pane for live doorbells, then starts the command.
+
+If a pane was rebuilt after detach, register again:
+
+```bash
+letterbox tmux register pi
+letterbox tmux status
+```
+
+## Send a live handoff
+
+```bash
+source ~/.agent-letterbox/env.sh
+export LETTERBOX_AGENT=pi
+
 printf '%s\n' 'Review src/auth.ts and report correctness findings.' |
-  LETTERBOX_AGENT=pi letterbox send claude delegate auth-review --ack --now
+  letterbox send claude delegate auth-review --ack --now
 ```
 
-The letter is written first; tmux then uses `send-keys` to inject the generic doorbell into Claude's live session.
+1. Letter lands in Claude’s inbox  
+2. Doorbell is injected into Claude’s registered pane  
+3. Claude ACKs / works / replies with `letterbox reply`  
+4. Original letter is archived  
 
-> `LETTERBOX_TMUX_SUBMIT=1` can submit text already waiting in a target terminal buffer. Use it only for dedicated agent sessions.
+> `LETTERBOX_TMUX_SUBMIT=1` (set by `--automatic-doorbells`) can submit text already in a buffer. Use dedicated agent panes only.
+
+## Static session fallback (optional)
+
+If you prefer fixed session names without self-registration, edit:
+
+```bash
+$EDITOR "$LETTERBOX_DIR/tmux-patterns.tsv"
+```
+
+```text
+pi	pi-session
+claude	claude-session
+```
+
+The adapter prefers the live registry, then this file.
 
 ## Test
 
@@ -68,9 +106,10 @@ make test
 
 ## Learn more
 
-- [docs/tmux.md](docs/tmux.md) — tmux doorbell setup
-- [SPEC.md](SPEC.md) — message format and reply-first semantics
-- [SECURITY.md](SECURITY.md) — threat model and reporting
+- [docs/team-setup.md](docs/team-setup.md) — full team bootstrap  
+- [docs/tmux.md](docs/tmux.md) — adapter details and safety  
+- [SPEC.md](SPEC.md) — message format and reply-first semantics  
+- [SECURITY.md](SECURITY.md) — threat model  
 
 ## License
 

@@ -1,106 +1,102 @@
-# cmux team setup
+# tmux team setup
 
-This is the standard Agent Letterbox setup for a live terminal-agent team.
+This is the standard Agent Letterbox setup for a live **tmux** agent team.
 
-**You control cmux.** Open whatever panels, workspaces, windows, and agents fit the task. Letterbox never creates or rearranges your cmux layout; it only discovers or registers live agent surfaces and rings them.
+**You control tmux.** Create whatever sessions, windows, and panes fit the task. Letterbox never creates or rearranges your layout; it only registers the pane you launch each agent in, then rings that pane when mail arrives.
 
 ## One-time setup
 
-Run once from the Agent Letterbox checkout:
+From the Agent Letterbox for tmux checkout:
 
 ```bash
-letterbox cmux setup --agents pi,claude,grok,hermes --submit
+chmod +x bin/letterbox adapters/*.sh tests/*.sh
+export PATH="$PWD/bin:$PATH"
+
+letterbox tmux setup --agents pi,claude,grok,hermes --automatic-doorbells
+source ~/.agent-letterbox/env.sh
 ```
 
 This creates `~/.agent-letterbox/` by default, including:
 
 ```text
 inboxes and processed folders for every named agent
-cmux-agents.tsv          # live self-registrations
-cmux-patterns.tsv        # optional static title patterns
-env.sh                   # shared Letterbox/cmux environment
+tmux-agents.tsv          # live pane self-registrations
+tmux-patterns.tsv        # optional static session-name fallback
+env.sh                   # shared Letterbox/tmux environment
 AGENT-LETTERBOX.md       # startup/resume instruction snippet
-
-It also symlinks the bundled `agent-letterbox` skill into `~/.agents/skills/agent-letterbox` (override with `LETTERBOX_SKILLS_DIR`). Agents that support global Agent Skills can then load the same doorbell/reply behavior automatically.
 ```
 
-`--submit` enables automatic terminal input doorbells. Leave it out if you want visibility notifications only.
+It also links:
+
+- `~/.local/bin/letterbox` → this checkout’s CLI  
+- `~/.agents/skills/agent-letterbox` → the bundled skill  
+
+`--automatic-doorbells` enables `LETTERBOX_TMUX_SUBMIT=1` (inject the doorbell line + Enter into the live agent pane). Leave it out if you only want a tmux status-line notification.
 
 Use another shared location when needed:
 
 ```bash
-letterbox cmux setup --agents planner,reviewer --dir /shared/letterbox --submit
+letterbox tmux setup --agents planner,reviewer --dir /shared/letterbox --automatic-doorbells
+source /shared/letterbox/env.sh
 ```
 
-## Launch agents in any cmux layout
+## Launch agents in any tmux layout
 
-Open cmux and create your own layout. Then launch each agent inside its chosen pane or workspace through the wrapper:
+Open tmux and create your own layout. In **each agent’s pane**, launch through the wrapper:
 
 ```bash
-letterbox cmux run pi -- pi
-letterbox cmux run claude -- claude
-letterbox cmux run grok -- grok
-letterbox cmux run hermes -- hermes chat
+source ~/.agent-letterbox/env.sh
+
+letterbox tmux run pi -- pi
+# other panes:
+letterbox tmux run claude -- claude
+letterbox tmux run grok -- grok
+letterbox tmux run hermes -- hermes chat
 ```
 
-The wrapper:
+`tmux run` will:
 
-1. loads the generated shared environment;
-2. exposes the shared Agent Letterbox skill location;
-3. sets `LETTERBOX_AGENT`;
-4. self-registers the current live cmux surface;
-5. launches the requested agent command.
+1. register the **current pane** for that agent id  
+2. start the agent command in the foreground  
 
-The agent can live in any workspace. The cmux adapter uses `cmux tree --all` and registered surface IDs to target it across panels and workspaces.
+Surface / pane ids change after detach/reattach or layout rebuilds — run `letterbox tmux run` (or `letterbox tmux register <id>`) again after relaunch.
 
-## Dynamic and duplicate agents
+### Manual registration
 
-The wrapper solves dynamic titles and duplicate runtimes automatically. Give each live session a distinct identity:
+If the agent is already running in this pane:
 
 ```bash
-letterbox cmux run pi-research -- pi
-letterbox cmux run pi-builder -- pi
-letterbox cmux run agent-zero -- agent-zero
+letterbox tmux register claude-review
+letterbox tmux status
+letterbox tmux unregister claude-review
 ```
 
-Each registration maps an identity to its current `surface:N` in the shared `cmux-agents.tsv` registry. Surface IDs change after restart/resume, so use `letterbox cmux run` again whenever the agent is relaunched.
+### Static fallback patterns
 
-For an already-running agent, register manually from inside its terminal:
+If you prefer fixed session names without self-registration, edit `tmux-patterns.tsv`:
 
-```bash
-letterbox cmux register claude-review
+```text
+pi	pi-session
+claude	claude-session
 ```
 
-Inspect or remove registrations:
-
-```bash
-letterbox cmux status
-letterbox cmux unregister claude-review
-```
+The adapter prefers the live registry, then falls back to this file.
 
 ## Send a live handoff
 
-From one agent terminal:
-
 ```bash
+source ~/.agent-letterbox/env.sh
+export LETTERBOX_AGENT=pi
+
 printf '%s\n' 'Review src/auth.ts and report correctness findings.' |
   letterbox send claude delegate auth-review --ack --now
 ```
 
-The message is written to Claude's inbox first. If Claude is live, the cmux adapter injects the generic doorbell line into its registered terminal.
+The letter is written to Claude’s inbox first. If Claude’s pane is registered and live, the tmux adapter injects the generic doorbell:
 
-For an urgent reply, preserve urgency:
-
-```bash
-printf '%s\n' 'ACK: I am reviewing it now.' |
-  letterbox reply <message-id> ack auth-review-ack --now
+```text
+📬 letterbox doorbell: unacked delegate in <letterbox>/claude/inbox/ — please check
 ```
-
-## Safety
-
-Automatic terminal input is powerful and intentionally opt-in. `--submit` may submit text already waiting in a target terminal input buffer. Use it only for dedicated agent terminals.
-
-The doorbell contains no task content. The durable letter remains the real message and fallback if an agent is offline.
 
 ## Validate
 
@@ -108,4 +104,4 @@ The doorbell contains no task content. The durable letter remains the real messa
 make test
 ```
 
-Then send a harmless `--now` delegate between two live agents in separate cmux workspaces. Verify the inbox letter, the target terminal doorbell, the ACK/result, and the archived original.
+Then send a harmless `--now` delegate between two live agents in separate panes. Verify the inbox letter, the target pane doorbell, the ACK/result, and the archived original.

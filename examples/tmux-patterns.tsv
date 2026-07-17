@@ -1,3 +1,4 @@
-# Generic example (replace with your actual tmux sessions)
-agent1	session-or-window-1
-agent2	session-or-window-2
+# Optional static fallback: agent<TAB>tmux-session-name
+# Prefer live self-registration: letterbox tmux run <agent> -- <command>
+# agent1	session-or-window-1
+# agent2	session-or-window-2
