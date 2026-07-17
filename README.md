@@ -2,6 +2,8 @@
 
 ## Ring the bell. Create the team.
 
+![Agent Letterbox for tmux](assets/hero/letterbox-hero-1600x900.png)
+
 **Agent Letterbox for tmux turns separate coding-agent terminals into a live team.**
 
 A message is saved safely on disk. When the recipient is live, tmux sends one short instruction into its pane:
