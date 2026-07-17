@@ -28,8 +28,8 @@ AGENT-LETTERBOX.md       # startup/resume instruction snippet
 
 It also links:
 
-- `~/.local/bin/letterbox` → this checkout’s CLI  
-- `~/.agents/skills/agent-letterbox` → the bundled skill  
+- `~/.local/bin/letterbox` → this checkout’s CLI
+- `~/.agents/skills/agent-letterbox` → the bundled skill
 
 `--automatic-doorbells` enables `LETTERBOX_TMUX_SUBMIT=1` (inject the doorbell line + Enter into the live agent pane). Leave it out if you only want a tmux status-line notification.
 
@@ -56,8 +56,8 @@ letterbox tmux run hermes -- hermes chat
 
 `tmux run` will:
 
-1. register the **current pane** for that agent id  
-2. start the agent command in the foreground  
+1. register the **current pane** for that agent id
+2. start the agent command in the foreground
 
 Surface / pane ids change after detach/reattach or layout rebuilds — run `letterbox tmux run` (or `letterbox tmux register <id>`) again after relaunch.
 
