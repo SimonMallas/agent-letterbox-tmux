@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased] — tmux-only bootstrap
+
+- `letterbox tmux setup|run|register|unregister|status` for beginner team bootstrap
+- Live pane self-registration registry (`tmux-agents.tsv`) preferred by `adapters/tmux.sh`
+- Static `tmux-patterns.tsv` remains as fallback
+- README rewritten as copy/paste public tmux install
+- Removed cmux-facing CLI/docs from this product tree
+- Tests: `test_tmux_bootstrap.sh` for setup/registry/doorbell; existing live inject test kept
+
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
