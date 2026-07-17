@@ -76,10 +76,10 @@ printf '%s\n' 'Review src/auth.ts and report correctness findings.' |
   letterbox send claude delegate auth-review --ack --now
 ```
 
-1. Letter lands in Claude’s inbox  
-2. Doorbell is injected into Claude’s registered pane  
-3. Claude ACKs / works / replies with `letterbox reply`  
-4. Original letter is archived  
+1. Letter lands in Claude’s inbox
+2. Doorbell is injected into Claude’s registered pane
+3. Claude ACKs / works / replies with `letterbox reply`
+4. Original letter is archived
 
 > `LETTERBOX_TMUX_SUBMIT=1` (set by `--automatic-doorbells`) can submit text already in a buffer. Use dedicated agent panes only.
 
@@ -106,10 +106,10 @@ make test
 
 ## Learn more
 
-- [docs/team-setup.md](docs/team-setup.md) — full team bootstrap  
-- [docs/tmux.md](docs/tmux.md) — adapter details and safety  
-- [SPEC.md](SPEC.md) — message format and reply-first semantics  
-- [SECURITY.md](SECURITY.md) — threat model  
+- [docs/team-setup.md](docs/team-setup.md) — full team bootstrap
+- [docs/tmux.md](docs/tmux.md) — adapter details and safety
+- [SPEC.md](SPEC.md) — message format and reply-first semantics
+- [SECURITY.md](SECURITY.md) — threat model
 
 ## License
 

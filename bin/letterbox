@@ -38,9 +38,28 @@ tmux_patterns_path() { printf '%s' "${LETTERBOX_TMUX_PATTERNS:-$BOX/tmux-pattern
 
 # Current pane target when running inside tmux (precise doorbell injection).
 tmux_current_target() {
+  # Resolve the pane this process is running in. Prefer TMUX_PANE; otherwise
+  # match pane_pid against this process or its ancestors (works headless).
   [[ -n "${TMUX:-}" ]] || return 1
   command -v tmux >/dev/null 2>&1 || return 1
-  tmux display-message -p '#{pane_id}' 2>/dev/null
+  if [[ -n "${TMUX_PANE:-}" ]]; then
+    printf '%s\n' "$TMUX_PANE"
+    return 0
+  fi
+  local p=$$ candidates="" pane pid
+  candidates=" $p "
+  while [[ "$p" -gt 1 ]]; do
+    p="$(ps -o ppid= -p "$p" 2>/dev/null | tr -d "[:space:]")"
+    [[ -n "$p" ]] || break
+    candidates+=" $p "
+  done
+  while read -r pane pid; do
+    [[ -n "$pane" && -n "$pid" ]] || continue
+    case "$candidates" in
+      *" $pid "*) printf "%s\n" "$pane"; return 0;;
+    esac
+  done < <(tmux list-panes -a -F "#{pane_id} #{pane_pid}" 2>/dev/null)
+  tmux display-message -p "#{pane_id}" 2>/dev/null
 }
 
 tmux_target_live() {
