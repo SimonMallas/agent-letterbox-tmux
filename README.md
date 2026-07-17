@@ -45,6 +45,7 @@ cd ~/Developer/agent-letterbox-tmux
 chmod +x bin/letterbox adapters/*.sh tests/*.sh
 export PATH="$PWD/bin:$PATH"
 letterbox tmux setup --agents pi,claude,grok,hermes --automatic-doorbells
+source "$HOME/.agent-letterbox/env.sh"
 ```
 
 This downloads a local copy and sets up the team. If you are new to GitHub, you do not need to understand Git first—copying the block is enough.
@@ -56,6 +57,7 @@ cd ~/Developer/agent-letterbox-tmux
 git pull
 export PATH="$PWD/bin:$PATH"
 letterbox tmux setup --agents pi,claude,grok,hermes --automatic-doorbells
+source "$HOME/.agent-letterbox/env.sh"
 ```
 
 Setup automatically creates one shared Letterbox, agent inboxes, the global `letterbox` launcher, the shared Agent Letterbox skill, and the live-pane registration registry.
