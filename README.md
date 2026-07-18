@@ -142,6 +142,7 @@ make test
 
 ## Learn more
 
+- [docs/why-letterbox.md](docs/why-letterbox.md) — why durable letters plus generic doorbells beat direct task injection
 - [docs/team-setup.md](docs/team-setup.md) — detailed tmux team setup
 - [docs/tmux.md](docs/tmux.md) — tmux adapter safety and behavior
 - [SPEC.md](SPEC.md) — message format and reply-first semantics
