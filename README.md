@@ -38,23 +38,32 @@ Open any terminal window. You can either copy/paste the whole block below yourse
 
 > Set up Agent Letterbox for tmux using the README Quick Start. Do not change my tmux layout.
 
+### Option A — Recommended: copy/paste installer
+
 ```bash
-git clone https://github.com/SimonMallas/agent-letterbox-tmux.git \
-  ~/Developer/agent-letterbox-tmux
-cd ~/Developer/agent-letterbox-tmux
-chmod +x bin/letterbox adapters/*.sh tests/*.sh
-export PATH="$PWD/bin:$PATH"
+curl -fsSL https://raw.githubusercontent.com/SimonMallas/agent-letterbox-tmux/main/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
 letterbox tmux setup --agents pi,claude,grok,hermes --automatic-doorbells
 source "$HOME/.agent-letterbox/env.sh"
 ```
 
 This downloads a local copy and sets up the team. If you are new to GitHub, you do not need to understand Git first—copying the block is enough.
 
-If it is already downloaded:
+To update later, run the same installer again:
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/SimonMallas/agent-letterbox-tmux/main/install.sh | sh
+```
+
+### Option B — Manual Git install
+
+Use this if you want to inspect the source, modify it, or contribute:
+
+```bash
+git clone https://github.com/SimonMallas/agent-letterbox-tmux.git \
+  ~/Developer/agent-letterbox-tmux
 cd ~/Developer/agent-letterbox-tmux
-git pull
+chmod +x bin/letterbox adapters/*.sh tests/*.sh
 export PATH="$PWD/bin:$PATH"
 letterbox tmux setup --agents pi,claude,grok,hermes --automatic-doorbells
 source "$HOME/.agent-letterbox/env.sh"
