@@ -12,7 +12,7 @@ From the Agent Letterbox for tmux checkout:
 chmod +x bin/letterbox adapters/*.sh tests/*.sh
 export PATH="$PWD/bin:$PATH"
 
-letterbox tmux setup --agents pi,claude,grok,hermes --automatic-doorbells
+letterbox tmux setup --agents planner,reviewer,builder,researcher --automatic-doorbells
 source ~/.agent-letterbox/env.sh
 ```
 
@@ -47,11 +47,11 @@ Open tmux and create your own layout. In **each agent’s pane**, launch through
 ```bash
 source ~/.agent-letterbox/env.sh
 
-letterbox tmux run pi -- pi
+letterbox tmux run planner -- <your-agent-cli>
 # other panes:
-letterbox tmux run claude -- claude
-letterbox tmux run grok -- grok
-letterbox tmux run hermes -- hermes chat
+letterbox tmux run reviewer -- <your-agent-cli>
+letterbox tmux run builder -- <your-agent-cli>
+letterbox tmux run researcher -- <your-agent-cli>
 ```
 
 `tmux run` will:
@@ -66,9 +66,9 @@ Surface / pane ids change after detach/reattach or layout rebuilds — run `lett
 If the agent is already running in this pane:
 
 ```bash
-letterbox tmux register claude-review
+letterbox tmux register reviewer-secondary
 letterbox tmux status
-letterbox tmux unregister claude-review
+letterbox tmux unregister reviewer-secondary
 ```
 
 ### Static fallback patterns
@@ -76,8 +76,8 @@ letterbox tmux unregister claude-review
 If you prefer fixed session names without self-registration, edit `tmux-patterns.tsv`:
 
 ```text
-pi	pi-session
-claude	claude-session
+planner	planner-session
+reviewer	reviewer-session
 ```
 
 The adapter prefers the live registry, then falls back to this file.
@@ -86,16 +86,16 @@ The adapter prefers the live registry, then falls back to this file.
 
 ```bash
 source ~/.agent-letterbox/env.sh
-export LETTERBOX_AGENT=pi
+export LETTERBOX_AGENT=planner
 
 printf '%s\n' 'Review src/auth.ts and report correctness findings.' |
-  letterbox send claude delegate auth-review --ack --now
+  letterbox send reviewer delegate auth-review --ack --now
 ```
 
-The letter is written to Claude’s inbox first. If Claude’s pane is registered and live, the tmux adapter injects the generic doorbell:
+The letter is written to the reviewer’s inbox first. If the reviewer’s pane is registered and live, the tmux adapter injects the generic doorbell:
 
 ```text
-📬 letterbox doorbell: unacked delegate in <letterbox>/claude/inbox/ — please check
+📬 letterbox doorbell: unacked delegate in <letterbox>/reviewer/inbox/ — please check
 ```
 
 ## Validate

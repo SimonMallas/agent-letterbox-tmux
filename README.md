@@ -64,7 +64,7 @@ Open any terminal window. You can either copy/paste the whole block below yourse
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SimonMallas/agent-letterbox-tmux/main/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
-letterbox tmux setup --agents pi,claude,grok,hermes --automatic-doorbells
+letterbox tmux setup --agents planner,reviewer,builder,researcher --automatic-doorbells
 source "$HOME/.agent-letterbox/env.sh"
 ```
 
@@ -86,7 +86,7 @@ git clone https://github.com/SimonMallas/agent-letterbox-tmux.git \
 cd ~/Developer/agent-letterbox-tmux
 chmod +x bin/letterbox adapters/*.sh tests/*.sh
 export PATH="$PWD/bin:$PATH"
-letterbox tmux setup --agents pi,claude,grok,hermes --automatic-doorbells
+letterbox tmux setup --agents planner,reviewer,builder,researcher --automatic-doorbells
 source "$HOME/.agent-letterbox/env.sh"
 ```
 
@@ -114,24 +114,24 @@ Agent Letterbox does not create, move, or resize your tmux layout.
 In each agent's chosen tmux pane, use the launcher:
 
 ```bash
-letterbox tmux run pi -- pi
-letterbox tmux run claude -- claude
-letterbox tmux run grok -- grok
-letterbox tmux run hermes -- hermes
+letterbox tmux run planner -- <your-agent-cli>
+letterbox tmux run reviewer -- <your-agent-cli>
+letterbox tmux run builder -- <your-agent-cli>
+letterbox tmux run researcher -- <your-agent-cli>
 ```
 
 Copy and paste the appropriate command into each agent's chosen pane. The launcher gives the agent its identity, registers its current tmux pane, and starts the command. That is what lets Letterbox find and ring agents.
 
 ## Step 4 — Send the first handoff
 
-From the Pi terminal:
+From the planner terminal:
 
 ```bash
 printf '%s\n' 'Review src/auth.ts and report correctness findings.' |
-  LETTERBOX_AGENT=pi letterbox send claude delegate auth-review --ack --now
+  LETTERBOX_AGENT=planner letterbox send reviewer delegate auth-review --ack --now
 ```
 
-Claude receives a durable letter and a live tmux doorbell. To reply:
+The reviewer receives a durable letter and a live tmux doorbell. To reply:
 
 ```bash
 printf '%s\n' 'ACK: I will review it now.' |
@@ -147,9 +147,9 @@ The reply reaches Pi before Claude's original letter is archived.
 Give each new or duplicate session a unique identity:
 
 ```bash
-letterbox tmux run pi-research -- pi
-letterbox tmux run pi-builder -- pi
-letterbox tmux run agent-zero -- agent-zero
+letterbox tmux run planner-research -- <your-agent-cli>
+letterbox tmux run builder-a -- <your-agent-cli>
+letterbox tmux run agent-zero -- <your-agent-cli>
 ```
 
 Each live session self-registers its current tmux pane, avoiding title or session-name collisions.
