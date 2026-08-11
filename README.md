@@ -182,7 +182,7 @@ Each live session self-registers its current tmux pane, avoiding title or sessio
 
 ## Using a pre-release checkout
 
-If you installed an earlier checkout from `main`, reinstall from the current branch and use the lifecycle commands above. v0.2 adds an optional `thread` field to ownership replies; existing letters remain valid. All agents in one team should run the same v0.2 helper.
+If you installed an earlier checkout from `main`, reinstall from the current branch and use the lifecycle commands above. v0.2 adds an optional `thread` field to ownership replies; existing letters remain valid. Early scripts that send `ack`, `nack`, or `result` directly must use `letterbox reply` instead, and delegates must include `--ack`. All agents in one team should run the same v0.2 helper.
 
 ## Test the installation
 
