@@ -23,17 +23,21 @@ report() { # $1 label, $2 grep output
   printf 'FAIL [%s] private data:\n%s\n' "$1" "$2" >&2
   fails=$((fails + 1))
 }
-scan() { # $1 label, $2 grep-flags, $3 pattern
+scan() { # $1 label, $2 grep-flags, $3 pattern, $4 optional exclusion regex
   local out
   out="$(printf '%s\n' "$files" | xargs grep -nI $2 -e "$3" 2>/dev/null || true)"
+  if [[ -n "$out" && -n "${4:-}" ]]; then
+    out="$(printf '%s\n' "$out" | grep -vE "$4" || true)"
+  fi
   if [[ -n "$out" && -f "$allow" ]]; then
     out="$(printf '%s\n' "$out" | grep -vFf "$allow" || true)"
   fi
   report "$1" "$out"
 }
 
-# Local machine paths
-scan "abs-user-path" -inE '/(Users|home)/[A-Za-z0-9._-]+/'
+# Local machine paths. Placeholder usernames (you/your/user/username/name/me/whoami)
+# are documentation idioms, not leaks — excluded to keep a shipped clean tree green.
+scan "abs-user-path" -inE '/(Users|home)/[A-Za-z0-9._-]+/' '/(Users|home)/(you|your|user|username|name|me|whoami)/'
 scan "mount-path"    -inE '/(Volumes|mnt|media)/[A-Za-z0-9._-]+'
 # Secret shapes (length floors avoid code identifiers like skill_target)
 scan "api-keys"      -nE '(sk-[A-Za-z0-9_-]{16,}|gh[opu]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[bap]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16})'
