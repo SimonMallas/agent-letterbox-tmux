@@ -40,16 +40,27 @@ scan "api-keys"      -nE '(sk-[A-Za-z0-9_-]{16,}|gh[opu]_[A-Za-z0-9]{20,}|github
 scan "private-key"   -nF 'PRIVATE KEY-----'
 scan "bot-token"     -nE '[0-9]{8,12}:[A-Za-z0-9_-]{30,}'
 
-# Optional team-local HARD patterns (never shipped; see header)
+# Optional team-local HARD patterns (never shipped; see header).
+# Output must always state whether this override was in effect, so CI logs
+# never imply team-private identity coverage that was not configured.
+override_state="ABSENT — generic patterns only (no team-private identity coverage)"
 if [[ -f "$override" ]]; then
+  override_count=0
   while IFS= read -r pat || [[ -n "$pat" ]]; do
     [[ -z "$pat" || "$pat" == \#* ]] && continue
+    override_count=$((override_count + 1))
     scan "local-override" -inE "$pat"
   done < "$override"
+  if (( override_count > 0 )); then
+    override_state="ACTIVE ($override_count local pattern(s) from tests/private-patterns.local)"
+  else
+    override_state="ABSENT — override file present but no usable patterns (generic coverage only)"
+  fi
 fi
+printf 'no-private-data: override %s\n' "$override_state"
 
 if (( fails > 0 )); then
-  printf 'no-private-data: FAIL (%d pattern groups hit)\n' "$fails" >&2
+  printf 'no-private-data: FAIL (%d pattern groups hit, override %s)\n' "$fails" "$override_state" >&2
   exit 1
 fi
 printf 'no-private-data: PASS\n'
