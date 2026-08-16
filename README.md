@@ -48,7 +48,7 @@ Read the full comparison in [Why Letterbox?](docs/why-letterbox.md).
 
 ## How a task moves
 
-Public v0.2 is a **correctness** release: acknowledgements no longer file work away.
+Public v0.3 keeps the v0.2 **correctness** lifecycle and adds operational reading verbs plus additive doorbell tokens.
 
 ```text
 send task (requires_ack=true)
@@ -193,7 +193,7 @@ Each live session self-registers its current tmux pane, avoiding title or sessio
 
 ## Using a pre-release checkout
 
-If you installed an earlier checkout from `main`, reinstall from the current branch and use the lifecycle commands above. v0.2 adds an optional `thread` field to ownership replies; existing letters remain valid. Early scripts that send `ack`, `nack`, or `result` directly must use `letterbox reply` instead, and delegates must include `--ack`. All agents in one team should run the same v0.2 helper.
+If you installed an earlier checkout from `main`, reinstall from the current branch and use the lifecycle commands above. v0.3 adds operational verbs (`check --recent|--thread`, `read`, `progress`, `nudge`, `token`), additive doorbell tokens, one-shot `result|nack` on `requires_ack: false` letters, and `file <path> --read` for path-form terminal replies. v0.2 letters remain valid. v0.2 introduced an optional additive `thread` field; existing letters remain valid and older readers ignore it. Early scripts that send `ack`, `nack`, or `result` directly must use `letterbox reply` instead, and delegates must include `--ack`. All agents in one team should run the same helper version.
 
 ## Test the installation
 
@@ -208,7 +208,7 @@ make test
 - [docs/why-letterbox.md](docs/why-letterbox.md) — why durable letters plus generic doorbells beat direct task injection
 - [docs/team-setup.md](docs/team-setup.md) — detailed tmux team setup
 - [docs/tmux.md](docs/tmux.md) — adapter safety, registry vs static patterns, recovery
-- [SPEC.md](SPEC.md) — normative protocol (v0.2)
+- [SPEC.md](SPEC.md) — normative protocol (v0.3)
 - [SECURITY.md](SECURITY.md) — threat model and reporting
 - [ROADMAP.md](ROADMAP.md) — scope and deferred items
 - [CHANGELOG.md](CHANGELOG.md) — user-visible changes
