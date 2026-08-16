@@ -2,10 +2,7 @@
 
 All notable changes to Agent Letterbox for tmux are documented here.
 
-## [Unreleased] — v0.3 core
-
-VERSION deliberately remains `0.2.0`: this work is unreleased. The version is set at
-release integration, not in the port branch.
+## [0.3.0] — 2026-08-16
 
 ### Added
 - **Additive doorbell token.** The knock may carry ` · <8-lowercase-hex>` after the existing
