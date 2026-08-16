@@ -11,7 +11,6 @@ lifecycle_v02_exit_gate() {
   echo "lifecycle v0.2: FAIL (early abort or incomplete: pass=${PASS:-0} expected=${EXPECTED_PASS}; missing 'lifecycle v0.2: PASS')" >&2
   exit 1
 }
-trap lifecycle_v02_exit_gate EXIT
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 letterbox="$root/bin/letterbox"
@@ -57,7 +56,10 @@ cleanup() {
   fi
   return 0
 }
-trap cleanup EXIT
+# One EXIT trap only — a second registration silently replaces the first, which
+# is how the gate above was dead until the mutation harness caught it.
+lifecycle_v02_exit() { cleanup; lifecycle_v02_exit_gate; }
+trap lifecycle_v02_exit EXIT
 
 new_box() {
   cleanup
@@ -97,6 +99,16 @@ ack_file="$(find "$box/planner/inbox" -name '*--reviewer--ack.md' -type f -print
 grep -Fq "re: $task_id" "$ack_file" || fail B1-re
 pass B1-ack-stamp-wip
 
+
+# Mutation hooks: prove exit 0 and set -e abort after assertion 1 cannot green-wash.
+if [[ "${LETTERBOX_MUTATE_EARLY_EXIT0:-0}" == 1 ]]; then
+  echo "MUTATION: early exit 0 after first assertion" >&2
+  exit 0
+fi
+if [[ "${LETTERBOX_MUTATE_EARLY_ABORT:-0}" == 1 ]]; then
+  echo "MUTATION: set-e abort after first assertion" >&2
+  false
+fi
 # B2 terminal result + direct
 begin_block
 printf 'finished\n' | lb reviewer reply "$task_id" result reply-slug >/dev/null
