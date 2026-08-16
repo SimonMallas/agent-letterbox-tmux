@@ -2,6 +2,17 @@
 # Public-safe v0.2 lifecycle matrix (P0/P1/P2). Neutral identities only.
 set -euo pipefail
 
+# EXIT-trap gate (adopted from the Zellij candidate, hermes 2026-08-16):
+# an early set -e/-u abort must not green-wash a partial run.
+SUITE_DONE=0
+EXPECTED_PASS=21
+lifecycle_v02_exit_gate() {
+  [[ "$SUITE_DONE" == 1 ]] && return 0
+  echo "lifecycle v0.2: FAIL (early abort or incomplete: pass=${PASS:-0} expected=${EXPECTED_PASS}; missing 'lifecycle v0.2: PASS')" >&2
+  exit 1
+}
+trap lifecycle_v02_exit_gate EXIT
+
 root="$(cd "$(dirname "$0")/.." && pwd)"
 letterbox="$root/bin/letterbox"
 PASS=0
@@ -353,5 +364,10 @@ if printf 'x\n' | lb planner send reviewer delegate badthread --ack --thread 'ba
 pass A1-thread
 
 echo
-echo "lifecycle v0.2: $PASS passed, $FAIL failed"
-[[ "$FAIL" -eq 0 ]]
+echo "lifecycle v0.2: $PASS passed, $FAIL failed (expected $EXPECTED_PASS passes)"
+if [[ "$FAIL" -ne 0 || "$PASS" != "$EXPECTED_PASS" ]]; then
+  echo "lifecycle v0.2: FAIL (pass=$PASS expected=$EXPECTED_PASS fail=$FAIL)" >&2
+  exit 1
+fi
+SUITE_DONE=1
+echo "lifecycle v0.2: PASS"
