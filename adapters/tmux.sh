@@ -16,7 +16,11 @@ slug="${3:?slug}"
 
 command -v tmux >/dev/null 2>&1 || { echo 'tmux doorbell deferred: tmux is unavailable' >&2; exit 0; }
 
+# v0.3: additive opaque token. The v0.2 line remains a byte-prefix, so v0.2
+# permitted-line rules still match. Never a slug, body, path or secret.
+tok="${LETTERBOX_DOORBELL_TOKEN:-}"
 line="📬 letterbox doorbell: unacked $type in ${LETTERBOX_DIR:?set LETTERBOX_DIR}/$to/inbox/ — please check"
+[ -n "$tok" ] && line="$line · $tok"
 target=''
 
 target_live() {
