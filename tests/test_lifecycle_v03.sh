@@ -84,6 +84,15 @@ if [[ -n "$real_v02" ]]; then
 else
   fail "adapter produced no line — fixture would be vacuous"
 fi
+# Mutation hooks: prove exit 0 and set -e abort after assertion 1 cannot green-wash.
+if [[ "${LETTERBOX_MUTATE_EARLY_EXIT0:-0}" == 1 ]]; then
+  echo "MUTATION: early exit 0 after first assertion" >&2
+  exit 0
+fi
+if [[ "${LETTERBOX_MUTATE_EARLY_ABORT:-0}" == 1 ]]; then
+  echo "MUTATION: set-e abort after first assertion" >&2
+  false
+fi
 if [[ -n "$real_v02" && "$real_v03" == "$real_v02"* && "$real_v03" != "$real_v02" ]]; then
   pass "real v0.2 line is a byte-prefix of the real v0.3 line"
 else
