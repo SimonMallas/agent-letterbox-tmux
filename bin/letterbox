@@ -282,11 +282,26 @@ cmd_init() {
   printf 'initialized letterbox: %s\n' "$BOX"
 }
 
+REPLY_BODY=""
+read_reply_body_or_die() {
+  # v0.3: never wait on a TTY and never hold a lifecycle lock while blocked on stdin.
+  # Known accepted limit: a non-TTY pipe that never reaches EOF may still block;
+  # the lifecycle lock is not held.
+  if [[ -t 0 ]]; then
+    die 'usage: pipe the reply body via stdin (letterbox reply <id> <ack|nack|result> <slug> [--now])'
+  fi
+  local body="$REPLY_BODY"
+  REPLY_BODY="$body"
+}
+
 ring_doorbell() {
-  local to="$1" type="$2" slug="$3"
+  local to="$1" type="$2" slug="$3" id="${4:-}"
   [[ -n "${LETTERBOX_DOORBELL:-}" ]] || return 0
   [[ -x "$LETTERBOX_DOORBELL" ]] || die "doorbell is not executable: $LETTERBOX_DOORBELL"
-  "$LETTERBOX_DOORBELL" "$to" "$type" "$slug"
+  # v0.3: the knock carries only an opaque token derived from the letter id.
+  # Never a slug, body, path or secret. Empty token = v0.2 line, unchanged.
+  local tok=""; [[ -n "$id" ]] && tok="$(doorbell_token_for_id "$id")"
+  LETTERBOX_DOORBELL_TOKEN="$tok" "$LETTERBOX_DOORBELL" "$to" "$type" "$slug"
 }
 
 publish_message() { # to type slug priority requires_ack re deadline body [thread]
@@ -436,7 +451,7 @@ cmd_send() {
   [[ -n "$body" ]] || die 'empty message body'
   local final; final="$(publish_message "$to" "$type" "$slug" "$priority" "$requires_ack" "$re" "$deadline" "$body" "$thread")"
   printf 'sent: %s\n' "$final"
-  [[ "$priority" == now ]] && ring_doorbell "$to" "$type" "$slug"
+  [[ "$priority" == now ]] && ring_doorbell "$to" "$type" "$slug" "$(basename "$final" .md)"
   return 0
 }
 
@@ -463,6 +478,91 @@ cmd_check() {
 }
 
 # Resolve id/path to canonical absolute path under own inbox or processed.
+
+# --- v0.3 core: safe references and display ids ---
+doorbell_token_for_id() { # random 8-hex tail, else sha256(id)[:8]
+    local id="$1" tail
+    tail="${id##*-}"
+    if [[ "$tail" =~ ^[0-9a-f]{8}$ ]]; then
+        printf '%s\n' "$tail"
+        return 0
+    fi
+    printf '%s' "$id" | shasum -a 256 | awk '{print substr($1,1,8)}'
+}
+display_id() {
+    local id="$1" ts="unknown"
+    if [[ "$id" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}) ]]; then
+        ts="${BASH_REMATCH[1]}"
+    fi
+    printf '%s · %s' "$ts" "$(doorbell_token_for_id "$id")"
+}
+safe_id_out() {
+    case "$1" in
+        *" · "*) printf '%s' "$1";;
+        *) display_id "$1";;
+    esac
+}
+confirm_label() {
+    local f="$1" id
+    id="$(frontmatter_value "$f" id 2>/dev/null || true)"
+    if [[ -z "$id" ]]; then
+        id="${f##*/}"
+        id="${id%.md}"
+    fi
+    display_id "$id"
+}
+resolve_action_ref() {
+    local arg="$1" scope="$2" allow_path="${3:-0}" parent f id disp tok
+    local -a hits=() dirs=()
+    [[ -n "$arg" ]] || return 1
+    if [[ "$allow_path" == 1 ]] && message_arg_is_path "$arg"; then
+        parent="$(cd "$(dirname "$arg")" && pwd -P)" || return 1
+        printf '%s/%s\n' "$parent" "$(basename "$arg")"
+        return 0
+    fi
+    case "$arg" in
+        /*|./*|../*|*/*) die "use a letter id, display id, or unique token, not a path";;
+    esac
+    case "$scope" in
+        owned-inbox) dirs=("$BOX/$ME/inbox");;
+        owned) dirs=("$BOX/$ME/inbox" "$BOX/$ME/processed");;
+        nudge)
+            shopt -s nullglob
+            dirs=("$BOX"/*/inbox "$BOX"/*/processed)
+            shopt -u nullglob
+            ;;
+        *) die "internal: bad resolve scope $scope";;
+    esac
+    shopt -s nullglob
+    for dir in "${dirs[@]}"; do
+        [[ -d "$dir" ]] || continue
+        for f in "$dir"/*.md; do
+            [[ -f "$f" ]] || continue
+            id="$(frontmatter_value "$f" id)"
+            disp="$(display_id "$id")"
+            tok="$(doorbell_token_for_id "$id")"
+            if [[ "$id" == "$arg" || "${f##*/}" == "$arg" || "${f##*/}" == "${arg}.md" || "$disp" == "$arg" ]]; then
+                hits+=("$f")
+            elif [[ "$arg" =~ ^[0-9a-f]{8}$ && "$tok" == "$arg" ]]; then
+                hits+=("$f")
+            fi
+        done
+    done
+    shopt -u nullglob
+    if (( ${#hits[@]} == 0 )); then
+        return 1
+    fi
+    if (( ${#hits[@]} > 1 )); then
+        echo "bus: ambiguous reference $(safe_id_out "$arg") — no action (matches ${#hits[@]}); use the full letter id" >&2
+        local h
+        for h in "${hits[@]}"; do
+            printf '  %s\n' "$(display_id "$(frontmatter_value "$h" id)")" >&2
+        done
+        exit 1
+    fi
+    printf '%s\n' "${hits[0]}"
+}
+
 resolve_owned_message() {
   local arg="$1" parent candidate
   if [[ -f "$arg" ]]; then
@@ -533,8 +633,18 @@ cmd_reply() {
     *) die 'can only reply to messages in your own inbox';;
   esac
 
-  [[ "$(frontmatter_value "$msg" requires_ack)" == "true" ]] || die 'letterbox reply requires a task letter (requires_ack: true)'
+  local req; req="$(frontmatter_value "$msg" requires_ack)"
+  case "$req" in
+    true) ;;
+    false)
+      # v0.3 short path: an explicitly no-ACK request may close in one shot.
+      [[ "$type" != "ack" ]] || die "ack is only for requires_ack: true tasks; use: letterbox reply <id> result <slug>  or  letterbox file <id>"
+      ;;
+    *) die "message has invalid requires_ack '$req' (expected true or false)";;
+  esac
   doorbell_to="$(frontmatter_value "$msg" from)"
+  # Body before the lock: a hanging stdin must not pin the letter.
+  read_reply_body_or_die
   acquire_lifecycle_lock "$msg"
   trap 'release_lifecycle_lock' EXIT
   if [[ ! -f "$msg" ]]; then
@@ -552,7 +662,7 @@ cmd_reply() {
     create_ack_stamp "$msg" "$REPLY_FILE"
     release_lifecycle_lock
     trap - EXIT
-    [[ "$priority" == now && "$REPLY_ALREADY" == false ]] && ring_doorbell "$doorbell_to" "$type" "$slug"
+    [[ "$priority" == now && "$REPLY_ALREADY" == false ]] && ring_doorbell "$doorbell_to" "$type" "$slug" "$(basename "$msg" .md)"
     printf 'acked: %s (in progress; reply: %s)\n' "$(basename "$msg")" "$(basename "$REPLY_FILE")"
     return 0
   fi
@@ -560,13 +670,25 @@ cmd_reply() {
   rm -f "$msg.ack"
   release_lifecycle_lock
   trap - EXIT
-  [[ "$priority" == now && "$REPLY_ALREADY" == false ]] && ring_doorbell "$doorbell_to" "$type" "$slug"
+  [[ "$priority" == now && "$REPLY_ALREADY" == false ]] && ring_doorbell "$doorbell_to" "$type" "$slug" "$(basename "$msg" .md)"
   printf 'closed: %s → %s/processed/ (reply: %s)\n' "$(basename "$msg")" "$ME" "$(basename "$REPLY_FILE")"
 }
 
+message_arg_is_path() { [[ -f "$1" ]]; }
+
 cmd_file() {
   need_me
-  local msg_arg="${1:?usage: letterbox file <id-or-file>}" msg inbox_canon processed_canon
+  local assert_read=false arg_is_path=false
+  local msg_arg="${1:?usage: letterbox file <id-or-path> [--read]}" msg inbox_canon processed_canon
+  shift || true
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --read) assert_read=true;;
+      *) die "unknown flag $1 (usage: letterbox file <id-or-path> [--read])";;
+    esac
+    shift
+  done
+  message_arg_is_path "$msg_arg" && arg_is_path=true
   msg="$(resolve_owned_message "$msg_arg")"
   inbox_canon="$(canonical_dir "$(inbox_path "$ME")")"
   processed_canon="$(canonical_dir "$(processed_path "$ME")")"
@@ -575,7 +697,19 @@ cmd_file() {
     "$processed_canon"/*) printf 'already filed: %s\n' "$(basename "$msg")"; return 0;;
     *) die 'can only file messages in your own inbox';;
   esac
-  [[ "$(frontmatter_value "$msg" requires_ack)" == "false" ]] || die 'cannot file a task letter; send terminal nack/result instead'
+  [[ "$(frontmatter_value "$msg" requires_ack)" == "false" ]] || die 'cannot file a task letter; use: letterbox reply <id> result|nack <slug>'
+  # v0.3 structural rule: a PATH argument is what shell glob expansion always
+  # yields, so filing an inbound result/nack that way needs an explicit --read
+  # assertion. An explicit letter id is a deliberate reference and files directly.
+  # Known accepted limit: an intentional id-enumeration loop is not detected as bulk.
+  local typ; typ="$(frontmatter_value "$msg" type)"
+  case "$typ" in
+    result|nack)
+      if [[ "$arg_is_path" == true && "$assert_read" != true ]]; then
+        die "refusing to file unread inbound $typ from a path; re-run: letterbox file <path> --read"
+      fi
+      ;;
+  esac
   mv "$msg" "$BOX/$ME/processed/"
   printf 'filed: %s → %s/processed/\n' "$(basename "$msg")" "$ME"
 }
