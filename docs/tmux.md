@@ -63,7 +63,8 @@ Setup flag `--automatic-doorbells` (alias `--submit`) turns this on in the gener
 The doorbell contains no task content — only a short generic nudge such as:
 
 ```text
-📬 letterbox doorbell: check your inbox
+📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check
+📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check · <8-lowercase-hex>
 ```
 
 Doorbell delivery means a wake-up was submitted to a verified live target, not that the agent read or accepted the letter. If a safe live target cannot be verified, Letterbox prefers silent durable delivery over risky pane injection.
