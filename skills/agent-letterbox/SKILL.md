@@ -1,7 +1,7 @@
 ---
 name: agent-letterbox
 description: Durable cross-agent coordination for live tmux teams. Use when receiving an Agent Letterbox doorbell, checking a Letterbox inbox, replying to another agent, registering a live tmux pane, or handling agent-to-agent work handoffs.
-version: 0.2.0
+version: 0.3.0
 author: Agent Letterbox
 license: MIT
 ---
@@ -45,7 +45,7 @@ delivery only. None means the letter was read, handled, or that a turn started.
    letterbox check
    ```
 
-   Task letters show `[UNACKED]` or `[ACCEPTED]`. Sidecar files are not extra mail.
+   Default check is an operational summary (display id, live/stale state, progress) and does not print bodies. Use `letterbox read <id-or-display-id-or-token>` for the exact durable letter. Task letters show `[UNACKED]` or `[ACCEPTED]`. Sidecar files are not extra mail.
 
 ## Task vs non-task
 
