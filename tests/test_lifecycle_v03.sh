@@ -49,28 +49,45 @@ CONFIDENTIAL-BODY-TEXT
 EOF
 }
 
-# --- 1. doorbell grammar, driven through the REAL adapter --------------------
-# Not a hand-built string comparison: these call adapters/tmux.sh and assert on
-# what it actually emits, so deleting the adapter fails the fixture.
-emit() { # $1 = token ("" for the v0.2 shape)
-  LETTERBOX_DIR=/box LETTERBOX_DOORBELL_TOKEN="$1" \
-    bash -c 'to=alpha; type=info; tok="${LETTERBOX_DOORBELL_TOKEN:-}"
-      line="📬 letterbox doorbell: unacked $type in ${LETTERBOX_DIR:?}/$to/inbox/ — please check"
-      [ -n "$tok" ] && line="$line · $tok"; printf "%s" "$line"'
+# --- 1. doorbell grammar, executed through the REAL adapter ------------------
+# Invokes adapters/tmux.sh with tmux mocked on PATH, exactly as
+# tmux-doorbell-safety.sh does. Deleting or breaking the adapter fails these.
+ADPT="$root/adapters/tmux.sh"
+mockbin="$BOX/mockbin"; mkdir -p "$mockbin"
+cat > "$mockbin/tmux" <<'MOCK'
+#!/usr/bin/env bash
+echo "$*" >> "$MOCK_LOG"
+case "$1" in
+  list-panes)  printf '%s\n' "$MOCK_PANE" ;;
+  has-session) exit 0 ;;
+esac
+exit 0
+MOCK
+chmod +x "$mockbin/tmux"
+printf 'alpha\t%%1\n' > "$BOX/patterns.tsv"
+
+emit_real() { # $1 = token ("" for v0.2 shape); prints the line the adapter sent
+  local log="$BOX/mock.log"; : > "$log"
+  MOCK_LOG="$log" MOCK_PANE='%1' \
+  PATH="$mockbin:$PATH" \
+  LETTERBOX_DIR=/box LETTERBOX_TMUX_PATTERNS="$BOX/patterns.tsv" LETTERBOX_TMUX_SUBMIT=1 \
+  LETTERBOX_DOORBELL_TOKEN="$1" \
+    "$ADPT" alpha info someslug >/dev/null 2>&1 || true
+  sed -n 's/^send-keys -t %1 -l //p' "$log" | head -1
 }
-real_v02="$(emit '')"
-real_v03="$(emit a1b2c3d4)"
+
+real_v02="$(emit_real '')"
+real_v03="$(emit_real a1b2c3d4)"
+
+if [[ -n "$real_v02" ]]; then
+  pass "real adapter emits a doorbell line (fixture is wired to adapters/tmux.sh)"
+else
+  fail "adapter produced no line — fixture would be vacuous"
+fi
 if [[ -n "$real_v02" && "$real_v03" == "$real_v02"* && "$real_v03" != "$real_v02" ]]; then
-  pass "adapter emits a v0.3 line whose prefix is the real v0.2 line"
+  pass "real v0.2 line is a byte-prefix of the real v0.3 line"
 else
   fail "adapter additive property broken: v02='$real_v02' v03='$real_v03'"
-fi
-# An unmodified v0.2 prefix rule must accept both real shapes; exact equality must not.
-if [[ "$real_v02" == "$real_v02"* && "$real_v03" == "$real_v02"* ]] \
-   && [[ "$real_v03" != "$real_v02" ]]; then
-  pass "v0.2 prefix rule accepts both real shapes; exact-match would reject v0.3"
-else
-  fail "bidirectional compatibility broken on real adapter output"
 fi
 if [[ "$real_v03" != *"$CANARY"* && "$real_v03" =~ \ ·\ [0-9a-f]{8}$ ]]; then
   pass "real v0.3 line ends in an 8-hex token and carries no slug"
@@ -200,28 +217,35 @@ EOF
 }
 mlb() { local h="$1"; shift; LETTERBOX_DIR="$BOX" LETTERBOX_AGENT=alpha "$h" "$@" 2>&1; }
 
-if h="$(mutate collision 'local hp; hp=' 'return 0; local hp; hp=')"; then
-  if ! mlb "$h" read beef0003 >/dev/null 2>&1; then
-    echo "[mut] collision guard removed -> read still refuses (expected FAIL upstream)"
-    pass "[mut] collision: ambiguity guard is load-bearing"
+# collision: disable the real hits>1 refusal in resolve_action_ref.
+if h="$(mutate collision 'if (( ${#hits[@]} > 1 )); then' 'if false; then')"; then
+  if grep -q 'if false; then' "$h"; then
+    if mlb "$h" read beef0003 >/dev/null 2>&1; then
+      echo "[mut] ambiguity refusal disabled -> read resolved a colliding token"
+      pass "[mut] collision: the hits>1 refusal is load-bearing"
+    else
+      fail "[mut] collision: refusal disabled but read still refused"
+    fi
   else
-    fail "[mut] collision guard removal survived"
+    fail "[mut] collision: mutation did not apply — assertion would be vacuous"
   fi
 else fail "[mut] collision anchor missing"; fi
 
-if h="$(mutate fileC 'if [[ "$arg_is_path" == true && "$assert_read" != true ]]; then' 'if false; then')"; then
-  put 2026-08-16T100400-beta-result-mut-abcd0005 result false
-  if mlb "$h" file "$BOX/alpha/inbox/2026-08-16T100400-beta-result-mut-abcd0005.md" >/dev/null 2>&1; then
-    echo "[mut] file-C guard removed -> path-form RESULT filed without --read"
-    pass "[mut] file-C: structural --read rule is load-bearing"
+# confirmation privacy: revert filed: to a raw basename and prove the canary leaks.
+if h="$(mutate confirm 'printf '"'"'filed: %s → %s/processed/\n'"'"' "$(confirm_label "$msg")"' 'printf '"'"'filed: %s → %s/processed/\n'"'"' "$(basename "$msg")"')"; then
+  if grep -q 'filed: %s → %s/processed/.n. "$(basename "$msg")"' "$h"; then
+    put 2026-08-16T100600-beta-info-CANARYMUT-77770001 info false
+    if mlb "$h" file 2026-08-16T100600-beta-info-CANARYMUT-77770001 2>&1 | grep -q CANARYMUT; then
+      echo "[mut] confirm_label removed -> filed: leaked the slug-bearing basename"
+      pass "[mut] confirm privacy: confirm_label is load-bearing"
+    else
+      fail "[mut] confirm privacy: basename restored but no leak observed"
+    fi
   else
-    fail "[mut] file-C guard removal did not change behaviour"
+    fail "[mut] confirm privacy: mutation did not apply — assertion would be vacuous"
   fi
-else fail "[mut] file-C anchor missing"; fi
+else fail "[mut] confirm anchor missing"; fi
 
-if h="$(mutate confirm 'printf %s → %s/processed/\n" "$(confirm_label "$msg")"' 'printf %s → %s/processed/\n" "$(basename "$msg")"')"; then
-  :
-fi
 put 2026-08-16T100500-beta-info-CANARYCONFIRM-9999abcd info false
 cf="$(lb file 2026-08-16T100500-beta-info-CANARYCONFIRM-9999abcd 2>&1 || true)"
 if [[ "$cf" == *CANARYCONFIRM* ]]; then

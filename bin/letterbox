@@ -649,7 +649,7 @@ resolve_own_inbox_message() {
 archive_message() {
   local message="$1"
   mv "$message" "$BOX/$ME/processed/"
-  printf 'archived: %s\n' "$(basename "$message")"
+  printf 'archived: %s\n' "$(confirm_label "$message")"
 }
 
 cmd_reply() {
@@ -676,10 +676,10 @@ cmd_reply() {
       parent_from="$(frontmatter_value "$msg" from)"
       expected_reply="$(inbox_path "$parent_from")/$(reply_file_for "$parent_id" "$type" "$ME")"
       if [[ -f "$expected_reply" || -f "$(processed_path "$parent_from")/$(basename "$expected_reply")" ]]; then
-        printf 'already closed: %s (your %s reply is published)\n' "$(basename "$msg")" "$type"
+        printf 'already closed: %s (your %s reply is published)\n' "$(confirm_label "$msg")" "$type"
         return 0
       fi
-      die "already closed without your $type reply: $(basename "$msg")"
+      die "already closed without your $type reply: $(confirm_label "$msg")"
       ;;
     *) die 'can only reply to messages in your own inbox';;
   esac
@@ -701,7 +701,7 @@ cmd_reply() {
   if [[ ! -f "$msg" ]]; then
     release_lifecycle_lock
     trap - EXIT
-    printf 'already closed: %s\n' "$(basename "$msg")"
+    printf 'already closed: %s\n' "$(confirm_label "$msg")"
     return 0
   fi
   local body
@@ -909,7 +909,7 @@ cmd_file() {
   processed_canon="$(canonical_dir "$(processed_path "$ME")")"
   case "$msg" in
     "$inbox_canon"/*) ;;
-    "$processed_canon"/*) printf 'already filed: %s\n' "$(basename "$msg")"; return 0;;
+    "$processed_canon"/*) printf 'already filed: %s\n' "$(confirm_label "$msg")"; return 0;;
     *) die 'can only file messages in your own inbox';;
   esac
   [[ "$(frontmatter_value "$msg" requires_ack)" == "false" ]] || die 'cannot file a task letter; use: letterbox reply <id> result|nack <slug>'
