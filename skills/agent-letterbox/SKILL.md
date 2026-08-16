@@ -13,10 +13,23 @@ license: MIT
 A Letterbox message is the durable work item. A doorbell is only the fast signal that tells a live agent to check its inbox.
 
 ```text
-📬 letterbox doorbell: check your inbox
+📬 letterbox doorbell: unacked <type> in <LETTERBOX_DIR>/<agent>/inbox/ — please check
+📬 letterbox doorbell: unacked <type> in <LETTERBOX_DIR>/<agent>/inbox/ — please check · <8-lowercase-hex>
 ```
 
-When this appears in your live terminal, check the inbox now.
+When either appears in your live terminal, check the inbox now.
+
+**Accept both shapes.** The second is the v0.3 form; its token suffix is *additive*, so the
+v0.2 line is a byte-prefix of the v0.3 line. Match by prefix or pattern, **never by
+full-line equality** — an exact-match rule silently rejects every token-bearing knock. A
+v0.3 reader must also keep accepting the tokenless v0.2 line, or an un-upgraded sender's
+knock is treated as an intrusion mid-rollout.
+
+The token is opaque, derived from the letter id. It is never a slug, body, path, secret, or
+the full id, and a malformed suffix is not a permitted line.
+
+**A ring is not a read.** `submitted`, `pasted_not_submitted` and `no_live_surface` describe
+delivery only. None means the letter was read, handled, or that a turn started.
 
 ## Startup and resume
 
@@ -87,3 +100,17 @@ Prefer `printf '%s\n' '…' | letterbox …`. Avoid unquoted heredocs when the b
 - `references/tmux.md` — tmux doorbell behavior
 - `references/protocol.md` — reply-first and priority rules
 - Repository `SPEC.md` and `docs/lifecycle.md` — normative v0.2 lifecycle
+
+## v0.3 helpers
+
+```bash
+letterbox check --recent     # hide stale work; prints a hidden-count footer
+letterbox read <ref>         # print a durable letter (display id or bare 8-hex token)
+letterbox progress <ref> <note>   # show long work is alive; no new letter
+letterbox nudge <ref>        # re-ring an open letter; changes no lifecycle state
+```
+
+A `requires_ack: false` request may close in one shot with `result`/`nack` — no ACK needed.
+Filing an inbound `result`/`nack` **from a path** requires `--read`, because shell globs
+always yield paths; an explicit letter id is a deliberate reference and files directly.
+Ambiguous references refuse rather than guessing.

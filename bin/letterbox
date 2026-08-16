@@ -714,7 +714,7 @@ cmd_reply() {
     release_lifecycle_lock
     trap - EXIT
     [[ "$priority" == now && "$REPLY_ALREADY" == false ]] && ring_doorbell "$doorbell_to" "$type" "$slug" "$(basename "$msg" .md)"
-    printf 'acked: %s (in progress; reply: %s)\n' "$(basename "$msg")" "$(basename "$REPLY_FILE")"
+    printf 'acked: %s (in progress; reply: %s)\n' "$(confirm_label "$msg")" "$(confirm_label "$REPLY_FILE")"
     return 0
   fi
   mv "$msg" "$BOX/$ME/processed/"
@@ -722,7 +722,7 @@ cmd_reply() {
   release_lifecycle_lock
   trap - EXIT
   [[ "$priority" == now && "$REPLY_ALREADY" == false ]] && ring_doorbell "$doorbell_to" "$type" "$slug" "$(basename "$msg" .md)"
-  printf 'closed: %s → %s/processed/ (reply: %s)\n' "$(basename "$msg")" "$ME" "$(basename "$REPLY_FILE")"
+  printf 'closed: %s → %s/processed/ (reply: %s)\n' "$(confirm_label "$msg")" "$ME" "$(confirm_label "$REPLY_FILE")"
 }
 
 
@@ -926,7 +926,7 @@ cmd_file() {
       ;;
   esac
   mv "$msg" "$BOX/$ME/processed/"
-  printf 'filed: %s → %s/processed/\n' "$(basename "$msg")" "$ME"
+  printf 'filed: %s → %s/processed/\n' "$(confirm_label "$msg")" "$ME"
 }
 
 cmd_done() {

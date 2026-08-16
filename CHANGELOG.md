@@ -2,6 +2,44 @@
 
 All notable changes to Agent Letterbox for tmux are documented here.
 
+## [Unreleased] — v0.3 core
+
+VERSION deliberately remains `0.2.0`: this work is unreleased. The version is set at
+release integration, not in the port branch.
+
+### Added
+- **Additive doorbell token.** The knock may carry ` · <8-lowercase-hex>` after the existing
+  tail. The v0.2 line remains a byte-prefix of the v0.3 line, so an unmodified v0.2
+  permitted-line rule matches both shapes, and a v0.3 reader keeps accepting the tokenless
+  v0.2 line. Match by prefix or pattern — full-line equality silently rejects v0.3 knocks.
+  The token is opaque, derived from the letter id, and is never a slug, body, path, secret,
+  or the full id.
+- `letterbox read <ref>` prints a durable letter. `letterbox progress <ref> <note>` records
+  a one-line note plus UTC in an existing ACK sidecar, creating no letter. `letterbox nudge
+  <ref>` re-rings an open letter without changing lifecycle state.
+- Operational `letterbox check`: live work first, stale last with a loud `STALE` marker and
+  age, live/stale counts, progress notes shown by default, and `--recent` hiding older work
+  only with a hidden-count footer. `check --thread <id>` is a read-only fan-out view.
+- A required private-vocabulary gate (`tests/test_private_vocabulary.sh`) fails the build,
+  with file and line, if internal naming reaches a public file.
+
+### Changed
+- References are resolved by one shared resolver, so a reference printed by `check` works in
+  `read`, `reply`, `file`, `progress` and `nudge`. Ambiguous references refuse with a
+  non-zero exit rather than guessing.
+- `acked:`, `closed:` and `filed:` confirmations print slug-free display ids. `sent:` still
+  prints the created letter path, which callers rely on.
+- Replies read their body **before** taking the lifecycle lock and fail fast on a TTY, so a
+  blocked stdin cannot pin a letter. Known accepted limit: a non-TTY pipe that never reaches
+  EOF may still block the caller; the lock is not held.
+- A `requires_ack: false` request may close in one shot with `result`/`nack`.
+- `letterbox file` gains `--read`. An inbound `result`/`nack` given as a **path** requires it;
+  an explicit letter id files directly. Known accepted limit: an intentional id-enumeration
+  loop is not detected as bulk.
+- SPEC now documents the doorbell line the adapter actually emits. It previously showed a
+  shorter illustrative line that was never produced, so a permitted-line rule written from
+  the docs would not have matched a real knock.
+
 ## [0.2.0] — 2026-08-11
 
 Public v0.2 establishes a durable task lifecycle for tmux teams and documents the resulting state machine.
