@@ -97,7 +97,8 @@ Prefer `printf` (or a quoted heredoc `<<'EOF'`) for the body so the shell does n
 The letter is written to the reviewer’s inbox first. If the reviewer’s pane is registered and live (or a static pattern matches), and submit is enabled, the tmux adapter injects the generic doorbell:
 
 ```text
-📬 letterbox doorbell: check your inbox
+📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check
+📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check · <8-lowercase-hex>
 ```
 
 Accept work (non-terminal — letter stays in inbox):
