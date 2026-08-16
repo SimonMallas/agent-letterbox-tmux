@@ -553,14 +553,15 @@ resolve_action_ref() {
         return 1
     fi
     if (( ${#hits[@]} > 1 )); then
-        echo "bus: ambiguous reference $(safe_id_out "$arg") — no action (matches ${#hits[@]}); use the full letter id" >&2
+        echo "letterbox: ambiguous reference $(safe_id_out "$arg") — no action (matches ${#hits[@]}); use the full letter id" >&2
         local h
         for h in "${hits[@]}"; do
             printf '  %s\n' "$(display_id "$(frontmatter_value "$h" id)")" >&2
         done
         exit 1
     fi
-    printf '%s\n' "${hits[0]}"
+    local hp; hp="$(cd "$(dirname "${hits[0]}")" && pwd -P)" || return 1
+    printf '%s/%s\n' "$hp" "$(basename "${hits[0]}")"
 }
 
 resolve_owned_message() {
@@ -615,7 +616,7 @@ cmd_reply() {
   [[ -n "$slug" ]] || die 'slug became empty'
 
   local msg parent_id parent_from expected_reply doorbell_to inbox_canon processed_canon
-  msg="$(resolve_owned_message "$message")"
+  msg="$(resolve_action_ref "$message" owned 1)" || die "message not found: $(safe_id_out "$message")"
   inbox_canon="$(canonical_dir "$(inbox_path "$ME")")"
   processed_canon="$(canonical_dir "$(processed_path "$ME")")"
   case "$msg" in
@@ -674,6 +675,64 @@ cmd_reply() {
   printf 'closed: %s → %s/processed/ (reply: %s)\n' "$(basename "$msg")" "$ME" "$(basename "$REPLY_FILE")"
 }
 
+
+# --- v0.3 core: read, progress, nudge ---
+print_progress_line() { # $1=letter file
+    local stamp="$1.ack" note age ep
+    [[ -f "$stamp" ]] || return 0
+    note="$(awk '/^progress:/{sub(/^progress:[[:space:]]*/, ""); print; exit}' "$stamp" 2>/dev/null || true)"
+    [[ -n "$note" ]] || return 0
+    if ep="$(progress_epoch "$stamp")"; then
+        age="$(format_age "$ep")"
+        printf '    progress: %s  (age %s)\n' "$note" "$age"
+    else
+        printf '    progress: %s\n' "$note"
+    fi
+}
+cmd_read() {
+    need_me
+    local arg="${1:?usage: letterbox read <id|display-id|token>}" msg
+    msg="$(resolve_action_ref "$arg" owned-inbox 0)" || die "message not found in your inbox: $(safe_id_out "$arg")"
+    cat "$msg"
+}
+cmd_progress() {
+    need_me
+    local id="${1:?usage: letterbox progress <id> <one-line note>}"
+    shift
+    local note="$*"
+    [[ -n "$note" ]] || die "usage: letterbox progress <id> <one-line note>"
+    [[ "$note" != *$'\n'* ]] || die "progress note must be one line"
+    local msg stamp tmp lid
+    msg="$(resolve_action_ref "$id" owned 0)" || die "message not found: $(safe_id_out "$id")"
+    local inbox_c processed_c
+    inbox_c="$(canonical_dir "$(inbox_path "$ME")")"
+    processed_c="$(canonical_dir "$(processed_path "$ME")")"
+    case "$msg" in
+        "$inbox_c"/*) ;;
+        "$processed_c"/*) die "cannot progress a filed/terminal letter: $(safe_id_out "$id")";;
+        *) die "can only progress messages in your own inbox";;
+    esac
+    stamp="$msg.ack"
+    [[ -f "$stamp" ]] || die "progress requires an ACK sidecar; use: letterbox reply <id> ack <slug>"
+    tmp="$(mktemp "$(dirname "$stamp")/.${stamp##*/}.tmp.XXXXXX")" || die "cannot write progress"
+    grep -v -E '^(progress|progress_at):' "$stamp" > "$tmp"
+    printf 'progress: %s\nprogress_at: %s\n' "$note" "$(now)" >> "$tmp"
+    mv "$tmp" "$stamp"
+    lid="$(frontmatter_value "$msg" id)"
+    echo "progress: $(display_id "$lid")"
+}
+cmd_nudge() {
+    need_me
+    local ref="${1:?usage: letterbox nudge <id|display-id|token>}" path folder to typ id
+    path="$(resolve_action_ref "$ref" nudge 0)" || die "message not found: $(safe_id_out "$ref")"
+    folder="$(basename "$(dirname "$path")")"
+    [[ "$folder" != "processed" ]] || die "cannot nudge a filed/terminal letter: $(safe_id_out "$ref")"
+    id="$(frontmatter_value "$path" id)"
+    to="$(basename "$(dirname "$(dirname "$path")")")"
+    typ="$(frontmatter_value "$path" type)"
+    ring_doorbell "$to" "$typ" nudge "$id"
+}
+
 message_arg_is_path() { [[ -f "$1" ]]; }
 
 cmd_file() {
@@ -689,7 +748,11 @@ cmd_file() {
     shift
   done
   message_arg_is_path "$msg_arg" && arg_is_path=true
-  msg="$(resolve_owned_message "$msg_arg")"
+  if [[ "$arg_is_path" == true ]]; then
+    msg="$(resolve_owned_message "$msg_arg")"
+  else
+    msg="$(resolve_action_ref "$msg_arg" owned 0)" || die "message not found: $(safe_id_out "$msg_arg")"
+  fi
   inbox_canon="$(canonical_dir "$(inbox_path "$ME")")"
   processed_canon="$(canonical_dir "$(processed_path "$ME")")"
   case "$msg" in
@@ -771,7 +834,8 @@ case "${1:-}" in
   --version|-V|version) cmd_version;;
   init) shift; cmd_init "$@";; send) shift; cmd_send "$@";; check) shift; cmd_check "$@";;
   reply) shift; cmd_reply "$@";; file) shift; cmd_file "$@";; done) shift; cmd_done "$@";;
+  read) shift; cmd_read "$@";; progress) shift; cmd_progress "$@";; nudge) shift; cmd_nudge "$@";;
   lock) shift; cmd_lock "$@";; unlock) shift; cmd_unlock "$@";;
   status) shift; cmd_status "$@";; tmux) shift; cmd_tmux "$@";;
-  *) printf 'usage: letterbox {init|send|check|reply|file|done|lock|unlock|status|tmux|--version} ...\n\ntmux: setup | run | register | unregister | status\n' >&2; exit 2;;
+  *) printf 'usage: letterbox {init|send|check|read|reply|file|progress|nudge|done|lock|unlock|status|tmux|--version} ...\n\ntmux: setup | run | register | unregister | status\n' >&2; exit 2;;
 esac
