@@ -1,4 +1,4 @@
-# Agent Letterbox Protocol v0.2
+# Agent Letterbox Protocol v0.3
 
 ## Principle
 
