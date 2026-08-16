@@ -28,4 +28,7 @@ test:
 	./tests/test_tmux_doorbell.sh
 	./tests/test_tmux_bootstrap.sh
 
+	./tests/test_doorbell_docs_drift.sh
+	./tests/test_doorbell_docs_drift_mutation.sh
+
 ci: test
