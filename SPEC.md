@@ -166,14 +166,24 @@ Prefer `printf … | letterbox …` (or another explicit stdin write) over shell
 
 ## Doorbells
 
-A doorbell is optional. Its only terminal content should be a generic prompt such as:
+A doorbell is optional. Its only terminal content is a generic prompt. The tmux adapter
+emits exactly these two shapes and nothing else:
 
 ```text
-📬 letterbox doorbell: check your inbox
+📬 letterbox doorbell: unacked <type> in <LETTERBOX_DIR>/<agent>/inbox/ — please check
+📬 letterbox doorbell: unacked <type> in <LETTERBOX_DIR>/<agent>/inbox/ — please check · <8-lowercase-hex>
 ```
+
+The second is the v0.3 form. The token is an **additive** suffix: the v0.2 line remains a
+byte-prefix of the v0.3 line, so an existing v0.2 permitted-line rule matches both and a
+v0.3 reader must keep accepting the tokenless v0.2 line during any transition. Match by
+prefix or pattern, never by full-line equality — an exact-match rule silently rejects every
+token-bearing knock.
 
 Rules:
 
+- The token is opaque and derived from the letter id. It is never a slug, body, path or
+  secret, and it is never the full letter id.
 - No task body, paths, secrets, or DONE-WHEN text in the doorbell line.
 - `priority: now` may ring a live surface; lower priorities are durable-only by default.
 - At-most-once notification over a durable at-least-once record.

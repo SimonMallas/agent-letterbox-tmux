@@ -456,25 +456,75 @@ cmd_send() {
 }
 
 cmd_check() {
-  local who="${1:-$ME}"; need_agent "$who"
-  local inbox; inbox="$(inbox_path "$who")"
-  [[ -d "$inbox" ]] || die "unknown agent: $who"
-  local file count ack_state
-  count=$(find "$inbox" -maxdepth 1 -name '*.md' -type f | wc -l | tr -d ' ')
-  printf '%s inbox: %s message(s)\n' "$who" "$count"
-  for file in "$inbox"/*.md; do
-    [[ -e "$file" ]] || break
-    ack_state=""
-    if [[ "$(frontmatter_value "$file" requires_ack)" == "true" ]]; then
-      if [[ -f "$file.ack" ]]; then ack_state=" [ACCEPTED]"; else ack_state=" [UNACKED]"; fi
+    local who="" recent=false thread="" arg
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --recent) recent=true;;
+            --all) ;;
+            --thread)
+                thread="${2:?usage: letterbox check --thread <id>}"
+                shift
+                ;;
+            --*) die "unknown flag $1 (usage: letterbox check [agent] [--recent|--thread <id>])";;
+            *)
+                [[ -z "$who" ]] || die "usage: letterbox check [agent] [--recent|--thread <id>]"
+                who="$1"
+                ;;
+        esac
+        shift
+    done
+    if [[ -n "$thread" ]]; then
+        check_thread "$thread"
+        return 0
     fi
-    printf '\n== %s%s ==\n' "$(basename "$file")" "$ack_state"
-    cat "$file"
-  done
-  for file in "$inbox"/*.md.ack; do
-    [[ -e "$file" ]] || break
-    [[ -f "${file%.ack}" ]] || printf 'letterbox: warning: orphan ACK sidecar %s\n' "$(basename "$file")" >&2
-  done
+    who="${who:-$ME}"
+    [[ -n "$who" ]] || die "letterbox check [agent] (or set LETTERBOX_AGENT)"
+    local dir="$BOX/$who/inbox"
+    [[ -d "$dir" ]] || die "no inbox for '$who'"
+    local f n id ep now stale_secs age_s live_n=0 stale_n=0
+    local -a live_rows=() stale_rows=()
+    now="$(date -u +%s)"
+    stale_secs="$(check_stale_secs)"
+    n=0
+    for f in "$dir"/*.md; do
+        [[ -e "$f" ]] || break
+        n=$((n + 1))
+        id="$(frontmatter_value "$f" id)"
+        ep="$(activity_epoch "$f")"
+        age_s=$((now - ep))
+        (( age_s < 0 )) && age_s=0
+        if (( age_s > stale_secs )); then
+            stale_n=$((stale_n + 1))
+            stale_rows+=("$ep|$f|$(format_age "$ep")")
+        else
+            live_n=$((live_n + 1))
+            live_rows+=("$ep|$f|$(format_age "$ep")")
+        fi
+    done
+    local days="${BUS_CHECK_STALE_DAYS:-14}"
+    echo "── $who inbox: $n message(s)  open: $live_n live · $stale_n stale (>${days}d)"
+    if (( live_n > 0 )); then
+        printf '%s\n' "${live_rows[@]}" | sort -t'|' -k1,1nr | while IFS='|' read -r ep f age; do
+            print_letter_card "$f" 0 "$age"
+        done
+    fi
+    if [[ "$recent" == true ]]; then
+        echo
+        echo "$stale_n stale items hidden; run letterbox check to see all open work"
+    elif (( stale_n > 0 )); then
+        printf '%s\n' "${stale_rows[@]}" | sort -t'|' -k1,1nr | while IFS='|' read -r ep f age; do
+            print_letter_card "$f" 1 "$age"
+        done
+    fi
+    for f in "$dir"/*.md.ack; do
+        [[ -e "$f" ]] || break
+        [[ -f "${f%.ack}" ]] || {
+            local oid="${f##*/}"
+            oid="${oid%.md.ack}"
+            echo "letterbox: warning: orphan ACK sidecar $(safe_id_out "$oid")" >&2
+        }
+    done
+    return 0
 }
 
 # Resolve id/path to canonical absolute path under own inbox or processed.
@@ -675,6 +725,108 @@ cmd_reply() {
   printf 'closed: %s → %s/processed/ (reply: %s)\n' "$(basename "$msg")" "$ME" "$(basename "$REPLY_FILE")"
 }
 
+
+# --- v0.3 core: staleness and age ---
+check_thread() { # $1=thread-or-re id — read-only, never writes
+    local want="$1" f agent folder id tid rid typ state extra ep age
+    echo "── thread $(display_id "$want")"
+    shopt -s nullglob
+    for folder in inbox processed; do
+        for f in "$BOX"/*/"$folder"/*.md; do
+            [[ -f "$f" ]] || continue
+            id="$(frontmatter_value "$f" id)"
+            tid="$(frontmatter_value "$f" thread)"
+            rid="$(frontmatter_value "$f" re)"
+            [[ "$tid" == "$want" || "$rid" == "$want" || "$id" == "$want" ]] || continue
+            agent="$(basename "$(dirname "$(dirname "$f")")")"
+            typ="$(frontmatter_value "$f" type)"
+            state="silent"
+            extra=""
+            if [[ "$folder" == "processed" ]]; then
+                case "$typ" in
+                    result) state="result";;
+                    nack) state="nack";;
+                    *) state="filed";;
+                esac
+            else
+                if [[ -f "$f.ack" ]]; then
+                    state="acked"
+                elif [[ "$(frontmatter_value "$f" requires_ack)" == "true" ]]; then
+                    state="silent"
+                else
+                    state="open"
+                fi
+            fi
+            printf '  %s  %s  %s  %s\n' "$agent" "$folder" "$state" "$(display_id "$id")"
+            print_progress_line "$f"
+        done
+    done
+    shopt -u nullglob
+}
+check_stale_secs() {
+    local days="${BUS_CHECK_STALE_DAYS:-14}"
+    printf '%s\n' $((days * 86400))
+}
+letter_epoch() { # $1=id $2=file-fallback
+    local id="$1" file="${2:-}" ts
+    if [[ "$id" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}) ]]; then
+        ts="${BASH_REMATCH[1]}"
+        date -uj -f '%Y-%m-%dT%H%M%S' "$ts" +%s 2>/dev/null && return 0
+    fi
+    [[ -n "$file" && -f "$file" ]] && stat -f %m "$file" && return 0
+    date -u +%s
+}
+stamp_epoch() { # $1=stamp $2=key (acked_at|progress_at)
+    local raw
+    raw="$(awk -F': ' -v k="$2" '$0 ~ "^"k":"{print $2; exit}' "$1" 2>/dev/null || true)"
+    [[ -n "$raw" ]] || return 1
+    date -uj -f '%Y-%m-%dT%H:%M:%SZ' "$raw" +%s 2>/dev/null
+}
+progress_epoch() { # $1=stamp
+    stamp_epoch "$1" progress_at
+}
+activity_epoch() { # $1=letter file
+    local f="$1" id ep cand
+    id="$(frontmatter_value "$f" id)"
+    ep="$(letter_epoch "$id" "$f")"
+    if [[ -f "$f.ack" ]]; then
+        if cand="$(stamp_epoch "$f.ack" acked_at)"; then
+            (( cand > ep )) && ep="$cand"
+        fi
+        if cand="$(progress_epoch "$f.ack")"; then
+            (( cand > ep )) && ep="$cand"
+        fi
+    fi
+    printf '%s\n' "$ep"
+}
+format_age() { # $1=epoch
+    local now sec
+    now="$(date -u +%s)"
+    sec=$((now - $1))
+    (( sec < 0 )) && sec=0
+    if (( sec < 3600 )); then printf '%sm\n' $((sec / 60))
+    elif (( sec < 86400 )); then printf '%sh\n' $((sec / 3600))
+    else printf '%sd\n' $((sec / 86400))
+    fi
+}
+letter_ack_state() { # $1=file
+    if [[ "$(frontmatter_value "$1" requires_ack)" == "true" ]]; then
+        if [[ -f "$1.ack" ]]; then printf '%s' " [ACCEPTED]"
+        else printf '%s' " [UNACKED]"
+        fi
+    fi
+}
+print_letter_card() { # $1=file $2=stale 0|1 $3=age
+    local f="$1" stale="$2" age="$3" extra=""
+    extra="$(letter_ack_state "$f")"
+    if [[ "$stale" == 1 ]]; then
+        extra="${extra}  STALE ${age}"
+    fi
+    echo
+    echo "═══ $(display_id "$(frontmatter_value "$f" id)")${extra}"
+    printf '    from: %s  type: %s\n' "$(frontmatter_value "$f" from)" "$(frontmatter_value "$f" type)"
+    print_progress_line "$f"
+}
 
 # --- v0.3 core: read, progress, nudge ---
 print_progress_line() { # $1=letter file
