@@ -2,7 +2,9 @@
 
 ## Ring the bell. Create the team.
 
-![Agent Letterbox for tmux](assets/hero/letterbox-hero-1600x900.png)
+![Eight coding agents handing work to each other over Agent Letterbox — panes ring as letters land](assets/hero/letterbox-team.gif)
+
+*Shown: the cmux edition mid-storm — same letters, same protocol. This edition rings tmux panes.*
 
 **Agent Letterbox for tmux turns separate coding-agent terminals into a live team.**
 
@@ -89,6 +91,12 @@ You need Bash, Git, and tmux. No server, database, cloud account, or custom tmux
 Open any terminal window. You can either copy/paste the whole block below yourself, **or ask an existing coding agent**:
 
 > Set up Agent Letterbox for tmux using the README Quick Start. Do not change my tmux layout.
+
+### Or: add the skill straight to your agent
+
+```bash
+npx skills add SimonMallas/agent-letterbox-tmux
+```
 
 ### Option A — Recommended: copy/paste installer
 
