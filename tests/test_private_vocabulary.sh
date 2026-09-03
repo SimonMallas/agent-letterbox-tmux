@@ -26,6 +26,11 @@ list_files() {
   fi
 }
 
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "FAIL: python3 required for whitespace-normalised scan" >&2
+  exit 1
+fi
+
 hits=0
 while IFS= read -r -d '' f; do
   [[ "$f" == "$SELF" || "$f" == "./$SELF" ]] && continue
@@ -38,11 +43,20 @@ while IFS= read -r -d '' f; do
     echo "FAIL: private vocabulary in public product -> ${f#./}:${m}" >&2
     hits=$((hits + 1))
   done < <(grep -InE "$PATTERNS" "$f" 2>/dev/null || true)
+  set +e
+  norm="$(python3 tests/vocab_normalized.py "${f#./}" "shared"" brain" "bus ""doorbell" 2>&1)"
+  nrc=$?
+  set -e
+  if [[ "$nrc" -ne 0 ]]; then
+    echo "FAIL: whitespace-normaliser error on ${f#./} (rc=$nrc): $norm" >&2
+    hits=$((hits + 1))
+    continue
+  fi
   while IFS= read -r hit; do
     [[ -z "$hit" ]] && continue
     echo "FAIL: private vocabulary (whitespace-normalised) at $hit" >&2
     hits=$((hits + 1))
-  done < <(python3 tests/vocab_normalized.py "${f#./}" "shared"" brain" "bus ""doorbell" 2>/dev/null || true)
+  done <<<"$norm"
 done < <(list_files)
 
 if (( hits > 0 )); then
