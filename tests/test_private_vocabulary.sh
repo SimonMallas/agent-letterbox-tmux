@@ -29,6 +29,7 @@ list_files() {
 hits=0
 while IFS= read -r -d '' f; do
   [[ "$f" == "$SELF" || "$f" == "./$SELF" ]] && continue
+  [[ "$f" == "tests/vocab_normalized.py" || "$f" == "./tests/vocab_normalized.py" ]] && continue
   [[ -f "$f" ]] || continue
   # -I skips binaries; -n gives line numbers. Filename comes from the loop, so it is
   # always printed even when grep is handed a single file.
@@ -37,6 +38,11 @@ while IFS= read -r -d '' f; do
     echo "FAIL: private vocabulary in public product -> ${f#./}:${m}" >&2
     hits=$((hits + 1))
   done < <(grep -InE "$PATTERNS" "$f" 2>/dev/null || true)
+  while IFS= read -r hit; do
+    [[ -z "$hit" ]] && continue
+    echo "FAIL: private vocabulary (whitespace-normalised) at $hit" >&2
+    hits=$((hits + 1))
+  done < <(python3 tests/vocab_normalized.py "${f#./}" "shared"" brain" "bus ""doorbell" 2>/dev/null || true)
 done < <(list_files)
 
 if (( hits > 0 )); then

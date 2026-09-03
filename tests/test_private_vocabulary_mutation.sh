@@ -52,6 +52,25 @@ for rel in "docs/visible-residue.md" ".github/workflows/residue-ci.yml" ".hidden
   fi
 done
 
+# Wrapped forbidden phrase (word1 + newline + word2) must fail with file:line.
+mkdir -p "$tmp/repo/docs"
+printf 'residue shared''\n''brain here\n' > "$tmp/repo/docs/wrap-residue.md"
+git -C "$tmp/repo" add -f docs/wrap-residue.md >/dev/null 2>&1 || true
+wrap_out="$(cd "$tmp/repo" && bash "$gate" 2>&1)" && wrap_rc=0 || wrap_rc=$?
+printf '%s\n' "$wrap_out" | sed 's/^/[mut] /'
+echo "[mut] wrap residue -> gate rc=$wrap_rc"
+if [[ "$wrap_rc" -eq 0 ]]; then
+  echo "FAIL: gate PASSED with wrapped private phrase" >&2
+  fails=$((fails + 1))
+elif ! printf '%s' "$wrap_out" | grep -qE "docs/wrap-residue.md:[0-9]+:"; then
+  echo "FAIL: wrap hit missing file:line" >&2
+  fails=$((fails + 1))
+else
+  echo "PASS: gate caught wrapped phrase with file:line"
+fi
+rm -f "$tmp/repo/docs/wrap-residue.md"
+git -C "$tmp/repo" add -A >/dev/null 2>&1 || true
+
 # Clean tree must pass, or every assertion above is meaningless.
 if (cd "$tmp/repo" && bash "$gate" >/dev/null 2>&1); then
   echo "PASS: gate passes on a clean tree"
