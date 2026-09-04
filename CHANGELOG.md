@@ -44,10 +44,10 @@ All notable changes to Agent Letterbox for tmux are documented here.
 ## [0.3.0] — 2026-08-16
 
 ### Added
-- **Additive doorbell token.** The knock may carry ` · <8-lowercase-hex>` after the existing
+- **Additive doorbell token.** The doorbell may carry ` · <8-lowercase-hex>` after the existing
   tail. The v0.2 line remains a byte-prefix of the v0.3 line, so an unmodified v0.2
   permitted-line rule matches both shapes, and a v0.3 reader keeps accepting the tokenless
-  v0.2 line. Match by prefix or pattern — full-line equality silently rejects v0.3 knocks.
+  v0.2 line. Match by prefix or pattern — full-line equality silently rejects v0.3 doorbells.
   The token is opaque, derived from the letter id, and is never a slug, body, path, secret,
   or the full id.
 - `letterbox read <ref>` prints a durable letter. `letterbox progress <ref> <note>` records
@@ -74,7 +74,7 @@ All notable changes to Agent Letterbox for tmux are documented here.
   loop is not detected as bulk.
 - SPEC now documents the doorbell line the adapter actually emits. It previously showed a
   shorter illustrative line that was never produced, so a permitted-line rule written from
-  the docs would not have matched a real knock.
+  the docs would not have matched a real doorbell.
 
 ## [0.2.0] — 2026-08-11
 

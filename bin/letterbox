@@ -304,7 +304,7 @@ ring_doorbell() {
   local to="$1" type="$2" slug="$3" id="${4:-}"
   [[ -n "${LETTERBOX_DOORBELL:-}" ]] || return 0
   [[ -x "$LETTERBOX_DOORBELL" ]] || die "doorbell is not executable: $LETTERBOX_DOORBELL"
-  # v0.3: the knock carries only an opaque token derived from the letter id.
+  # v0.3: the doorbell line carries only an opaque token derived from the letter id.
   # Never a slug, body, path or secret. Empty token = v0.2 line, unchanged.
   local tok=""; [[ -n "$id" ]] && tok="$(doorbell_token_for_id "$id")"
   LETTERBOX_DOORBELL_TOKEN="$tok" "$LETTERBOX_DOORBELL" "$to" "$type" "$slug"

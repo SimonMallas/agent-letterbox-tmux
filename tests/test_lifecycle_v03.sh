@@ -104,13 +104,13 @@ else
   fail "real v0.3 token shape wrong or slug present: $real_v03"
 fi
 
-# --- 2. canary: a slug must never reach the knock -----------------------------
+# --- 2. canary: a slug must never reach the doorbell -----------------------------
 put "2026-08-16T100000-beta-delegate-${CANARY}-dead0001" delegate true
 knock="$(LETTERBOX_DOORBELL="$root/adapters/noop.sh" lb nudge dead0001 2>&1 || true)"
 if [[ "$knock" != *"$CANARY"* ]]; then
-  pass "nudge knock carries no slug (canary negative assertion)"
+  pass "nudge doorbell carries no slug (canary negative assertion)"
 else
-  fail "SLUG LEAKED INTO KNOCK: $knock"
+  fail "SLUG LEAKED INTO DOORBELL: $knock"
 fi
 
 # --- 3. read resolves by bare token and by display id -------------------------

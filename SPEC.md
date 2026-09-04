@@ -178,7 +178,7 @@ The second is the v0.3 form. The token is an **additive** suffix: the v0.2 line 
 byte-prefix of the v0.3 line, so an existing v0.2 permitted-line rule matches both and a
 v0.3 reader must keep accepting the tokenless v0.2 line during any transition. Match by
 prefix or pattern, never by full-line equality — an exact-match rule silently rejects every
-token-bearing knock.
+token-bearing doorbell.
 
 Rules:
 

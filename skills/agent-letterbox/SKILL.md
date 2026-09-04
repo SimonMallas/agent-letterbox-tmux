@@ -21,9 +21,9 @@ When either appears in your live terminal, check the inbox now.
 
 **Accept both shapes.** The second is the v0.3 form; its token suffix is *additive*, so the
 v0.2 line is a byte-prefix of the v0.3 line. Match by prefix or pattern, **never by
-full-line equality** — an exact-match rule silently rejects every token-bearing knock. A
+full-line equality** — an exact-match rule silently rejects every token-bearing doorbell. A
 v0.3 reader must also keep accepting the tokenless v0.2 line, or an un-upgraded sender's
-knock is treated as an intrusion mid-rollout.
+doorbell is treated as an intrusion mid-rollout.
 
 The token is opaque, derived from the letter id. It is never a slug, body, path, secret, or
 the full id, and a malformed suffix is not a permitted line.
