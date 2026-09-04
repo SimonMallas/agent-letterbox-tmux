@@ -166,7 +166,7 @@ Prefer `printf … | letterbox …` (or another explicit stdin write) over shell
 
 ## Doorbells
 
-A doorbell is optional. Its only terminal content is a generic prompt. The tmux adapter
+Letters are durable without a ring; the bell is how anyone is told. Without a bell, mail lands in a dead drop. The doorbell's only terminal content is a generic prompt. The tmux adapter
 emits exactly these two shapes and nothing else:
 
 ```text
