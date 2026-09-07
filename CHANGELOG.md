@@ -2,6 +2,15 @@
 
 All notable changes to Agent Letterbox for tmux are documented here.
 
+### Unreleased
+
+- `letterbox token <8hex>` reports whether a doorbell token is unhandled,
+  already filed, or unknown. Own mailbox only; changes nothing and rings
+  nothing. Malformed and ambiguous tokens are refused.
+- `send` and `reply` refuse an empty body with a usage hint naming how to
+  supply one on stdin.
+- README links the shared guide.
+
 ## [0.3.2] — 2026-08-16
 
 ### Fixed
