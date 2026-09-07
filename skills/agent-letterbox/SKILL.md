@@ -108,6 +108,7 @@ letterbox check --recent     # hide stale work; prints a hidden-count footer
 letterbox read <ref>         # print a durable letter (display id or bare 8-hex token)
 letterbox progress <ref> <note>   # show long work is alive; no new letter
 letterbox nudge <ref>        # re-ring an open letter; changes no lifecycle state
+letterbox token <8hex>       # glance a doorbell token: unhandled / already filed / unknown
 ```
 
 A `requires_ack: false` request may close in one shot with `result`/`nack` — no ACK needed.

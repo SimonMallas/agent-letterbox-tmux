@@ -454,7 +454,7 @@ cmd_send() {
   local body
   if ! IFS= read -r -d '' body < <(cat; printf '\0'); then die 'cannot read message body'; fi
   body="$(printf '%s' "$body")"
-  [[ -n "$body" ]] || die 'empty message body'
+  [[ -n "$body" ]] || die 'empty message body; pipe the body via stdin (letterbox send <to> <type> <slug> [--now])'
   local final; final="$(publish_message "$to" "$type" "$slug" "$priority" "$requires_ack" "$re" "$deadline" "$body" "$thread")"
   printf 'sent: %s\n' "$final"
   [[ "$priority" == now ]] && ring_doorbell "$to" "$type" "$slug" "$(basename "$final" .md)"
@@ -715,7 +715,7 @@ cmd_reply() {
   local body
   if ! IFS= read -r -d '' body < <(cat; printf '\0'); then die 'cannot read reply body'; fi
   body="$(printf '%s' "$body")"
-  [[ -n "$body" ]] || die 'empty reply body'
+  [[ -n "$body" ]] || die 'empty reply body; pipe the reply body via stdin (letterbox reply <id> <ack|nack|result> <slug> [--now])'
   publish_derived_reply "$msg" "$type" "$body" "$priority"
   if [[ "$type" == "ack" ]]; then
     create_ack_stamp "$msg" "$REPLY_FILE"
@@ -957,6 +957,40 @@ cmd_done() {
   archive_message "$message"
 }
 
+cmd_token() {
+  need_me
+  local tok="${1:?usage: letterbox token <8hex>}"
+  [[ "$tok" =~ ^[0-9a-f]{8}$ ]] || die "token must be 8 lowercase hex"
+  local f id n=0 folder
+  local -a matches=()
+  shopt -s nullglob
+  for f in "$BOX/$ME/inbox/"*.md "$BOX/$ME/processed/"*.md; do
+    [[ -f "$f" ]] || continue
+    id="$(frontmatter_value "$f" id)"
+    if [[ "$(doorbell_token_for_id "$id")" == "$tok" ]]; then
+      n=$((n + 1))
+      matches+=("$f")
+    fi
+  done
+  shopt -u nullglob
+  if (( n == 0 )); then echo "unknown-token — no letter; ignore"; return 0; fi
+  if (( n > 1 )); then
+    echo "ambiguous-token — no dismiss, no ring" >&2
+    local m
+    for m in "${matches[@]}"; do
+      printf '  %s\n' "$(display_id "$(frontmatter_value "$m" id)")" >&2
+    done
+    return 1
+  fi
+  f="${matches[0]}"
+  folder="$(basename "$(dirname "$f")")"
+  if [[ "$folder" == "processed" ]]; then
+    echo "already filed — dismiss bell"
+  else
+    echo "unhandled — check"
+  fi
+}
+
 lock_name() {
   local p
   p="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
@@ -994,8 +1028,8 @@ case "${1:-}" in
   --version|-V|version) cmd_version;;
   init) shift; cmd_init "$@";; send) shift; cmd_send "$@";; check) shift; cmd_check "$@";;
   reply) shift; cmd_reply "$@";; file) shift; cmd_file "$@";; done) shift; cmd_done "$@";;
-  read) shift; cmd_read "$@";; progress) shift; cmd_progress "$@";; nudge) shift; cmd_nudge "$@";;
+  read) shift; cmd_read "$@";; progress) shift; cmd_progress "$@";; nudge) shift; cmd_nudge "$@";; token) shift; cmd_token "$@";;
   lock) shift; cmd_lock "$@";; unlock) shift; cmd_unlock "$@";;
   status) shift; cmd_status "$@";; tmux) shift; cmd_tmux "$@";;
-  *) printf 'usage: letterbox {init|send|check|read|reply|file|progress|nudge|done|lock|unlock|status|tmux|--version} ...\n\ntmux: setup | run | register | unregister | status\n' >&2; exit 2;;
+  *) printf 'usage: letterbox {init|send|check|read|reply|file|progress|nudge|token|done|lock|unlock|status|tmux|--version} ...\n\ntmux: setup | run | register | unregister | status\n' >&2; exit 2;;
 esac
