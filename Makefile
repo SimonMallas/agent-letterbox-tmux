@@ -23,6 +23,7 @@ test:
 	./tests/test_letter_epoch_stat.sh
 	./tests/test_letter_epoch_stat_mutation.sh
 	./tests/test_letter_epoch_date.sh
+	./tests/test_two_fence_parser.sh
 	./tests/test_no_private_data.sh
 	./tests/test_private_vocabulary.sh
 	./tests/test_private_vocabulary_mutation.sh

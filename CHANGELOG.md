@@ -16,6 +16,9 @@ tree and is not reimplemented here.
   (optional minus; no leading zeros); nonzero exit discards stdout.
 - `send` and `reply` refuse an empty or whitespace-only body. Non-blank
   bodies keep their surrounding whitespace.
+- Frontmatter is trusted only with an opening `---` and its closing `---`.
+  Further `---` lines belong to the body. Unterminated letters are skipped
+  in check/token/read/file/reply.
 
 ### Added
 
