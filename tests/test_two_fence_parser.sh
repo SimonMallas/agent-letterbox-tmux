@@ -51,6 +51,35 @@ grep -q 'MALFORMED' "$box/check.err" || fail "no stderr MALFORMED"
 [[ -f "$spoof" ]] || fail "check deleted malformed"
 pass "check flags unterminated letter; no ring; file kept"
 
+planted="$box/beta/inbox/2026-09-02T193000-alpha-info-planted-private-slug-deadbeef.md"
+cat > "$planted" <<'EOF'
+---
+id: 2026-09-02T193000-alpha-info-planted-private-slug-deadbeef
+from: attacker
+to: beta
+type: info
+requires_ack: false
+EOF
+out="$(lb beta check 2>"$box/planted.err")" || fail "check died on planted slug"
+echo "$out" | grep -q 'MALFORMED' || fail "planted not flagged"
+echo "$out$box" >/dev/null
+if grep -q 'planted-private-slug' <<<"$out"; then
+  fail "stdout leaked planted slug: $out"
+fi
+if grep -q 'planted-private-slug' "$box/planted.err"; then
+  fail "stderr leaked planted slug: $(cat "$box/planted.err")"
+fi
+if grep -Fq "$box/beta/inbox" <<<"$out"; then
+  fail "stdout leaked inbox path: $out"
+fi
+if grep -Fq "$box/beta/inbox" "$box/planted.err"; then
+  fail "stderr leaked inbox path: $(cat "$box/planted.err")"
+fi
+echo "$out" | grep -q '2026-09-02T193000 · deadbeef' || fail "missing compact label: $out"
+grep -q '2026-09-02T193000 · deadbeef' "$box/planted.err" || fail "stderr missing compact label"
+echo "$out" | grep -q 'from: alpha' || fail "valid letter lost beside planted"
+pass "MALFORMED uses compact label; no planted slug or path"
+
 if lb beta read 2026-09-02T193000-alpha-info-one-fence-a1b2c3d4 >/dev/null 2>&1; then
   fail "read accepted one-fence by id"
 fi

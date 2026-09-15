@@ -506,8 +506,10 @@ cmd_check() {
     for f in "$dir"/*.md; do
         [[ -e "$f" ]] || break
         if ! id="$(frontmatter_value "$f" id)"; then
-            printf 'letterbox: MALFORMED %s (need opening and closing ---)\n' "$f" >&2
-            echo "═══ MALFORMED  ${f##*/}"
+            stem="${f##*/}"; stem="${stem%.md}"
+            label="$(display_id "$stem")"
+            printf 'letterbox: MALFORMED %s (need opening and closing ---)\n' "$label" >&2
+            echo "═══ MALFORMED  $label"
             continue
         fi
         n=$((n + 1))
