@@ -31,12 +31,16 @@ assert_reject() {
 assert_match "joined text with space before em dash" \
   "$expected"$'\n'
 
-# Without -J, wrap at the space before — drops that space.
-assert_reject "missing wrap-edge space (inbox/—)" \
-  "📬 letterbox doorbell: unacked delegate in $box/alpha/inbox/— please check"
+# Negatives are derived from $expected so this file never contains a second
+# full doorbell-prefix line for the docs-drift scanner to treat as a fixture.
+head="${expected% — please check}"
+missing="${head}— please check"
+hard="${head}"$'\n'" — please check"
 
-# Hard newline kept (we no longer tr -d '\\n'): must not reassemble.
-assert_reject "hard-broken across a real newline" \
-  "📬 letterbox doorbell: unacked delegate in $box/alpha/inbox/"$'\n'" — please check"
+# Without -J, wrap at the space before the em dash drops that space.
+assert_reject "missing wrap-edge space" "$missing"
+
+# Hard newline kept (we no longer tr -d newline): must not reassemble.
+assert_reject "hard-broken across a real newline" "$hard"
 
 echo "capture-join predicate (mock, not native tmux): PASS"
