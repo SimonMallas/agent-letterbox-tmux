@@ -10,6 +10,7 @@ All notable changes to Agent Letterbox for tmux are documented here.
   ACK retry with a fenced body matches the stored letter. A different body
   still collides.
 - `check --thread` skips unterminated letters instead of exiting 1.
+- `message_body` emits raw lines so CRLF bodies survive identical ACK retry.
 
 ## [0.3.3] — 2026-09-15
 
