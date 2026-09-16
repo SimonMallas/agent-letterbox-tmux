@@ -2,6 +2,14 @@
 
 All notable changes to Agent Letterbox for tmux are documented here.
 
+## [0.3.4] — 2026-09-16
+
+### Fixed
+
+- `message_body` keeps `---` lines after the envelope close, so an identical
+  ACK retry with a fenced body matches the stored letter. A different body
+  still collides.
+
 ## [0.3.3] — 2026-09-15
 
 Maintenance cut of public main since 0.3.2, plus portable epoch parsing and
