@@ -15,6 +15,8 @@ A Letterbox message is the durable work item. A doorbell is only the fast signal
 ```text
 📬 letterbox doorbell: unacked <type> in <LETTERBOX_DIR>/<agent>/inbox/ — please check
 📬 letterbox doorbell: unacked <type> in <LETTERBOX_DIR>/<agent>/inbox/ — please check · <8-lowercase-hex>
+📬 letterbox doorbell: unacked <type> from <sender> in <LETTERBOX_DIR>/<agent>/inbox/ — please check
+📬 letterbox doorbell: unacked <type> from <sender> in <LETTERBOX_DIR>/<agent>/inbox/ — please check · <8-lowercase-hex>
 ```
 
 When either appears in your live terminal, check the inbox now.
@@ -23,7 +25,10 @@ When either appears in your live terminal, check the inbox now.
 v0.2 line is a byte-prefix of the v0.3 line. Match by prefix or pattern, **never by
 full-line equality** — an exact-match rule silently rejects every token-bearing doorbell. A
 v0.3 reader must also keep accepting the tokenless v0.2 line, or an un-upgraded sender's
-doorbell is treated as an intrusion mid-rollout.
+doorbell is treated as an intrusion mid-rollout. The v0.4 form adds an optional
+` from <sender>` middle insert naming the durable letter's sender
+(`^[A-Za-z][A-Za-z0-9._-]{0,31}$`); a malformed ` from ` clause rejects the line — never
+re-accept it as the no-sender shape.
 
 The token is opaque, derived from the letter id. It is never a slug, body, path, secret, or
 the full id, and a malformed suffix is not a permitted line.

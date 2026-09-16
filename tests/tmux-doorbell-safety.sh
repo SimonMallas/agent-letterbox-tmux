@@ -7,10 +7,12 @@
 #
 # The adapter resolves a target two different ways, and this exercises BOTH:
 #   %pane-id     -> tmux list-panes -a -F '#{pane_id}' | grep -Fx
-#   session-name -> tmux has-session -t
+#   session-name -> tmux has-session -t   (then pinned to a %pane via display-message)
 # The mock answers each accordingly, so target resolution genuinely happens.
-# A mock that merely exited 0 would make the adapter defer at lookup, and the
+# A mock that merely exited 0 would make the adapter bail at lookup, and the
 # refusal assertions would then pass for a reason unrelated to the submit gate.
+# doorbell-outcome v=1: the contract target is always a pinned %pane id, so a
+# session target is resolved to its active pane before any injection.
 set -uo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -26,8 +28,9 @@ cat > "$mockbin/tmux" <<'MOCK'
 #!/usr/bin/env bash
 echo "$*" >> "$MOCK_LOG"
 case "$1" in
-  list-panes)   printf '%s\n' "$MOCK_PANE" ;;   # satisfies grep -Fx "$t"
-  has-session)  exit 0 ;;                        # named session is "live"
+  list-panes)       printf '%s\n' "$MOCK_PANE" ;;   # satisfies grep -Fx "$t"
+  has-session)      exit 0 ;;                        # named session is "live"
+  display-message)  printf '%s\n' "$MOCK_PANE" ;;    # pins a session to its %pane
 esac
 exit 0
 MOCK
@@ -46,25 +49,25 @@ injected() { grep -qE '^send-keys ' "$MOCK_LOG"; }
 
 # $1 = "registry" | "patterns"
 run_adapter() {
-  : > "$MOCK_LOG"; : > "$work/stderr"
+  : > "$MOCK_LOG"; : > "$work/stderr"; : > "$work/stdout"
   if [[ "$1" == registry ]]; then
     printf 'reviewer\t%s\t%s\t0\n' "$PANE" "$SESSION" > "$registry"
     env PATH="$mockbin:$PATH" LETTERBOX_DIR="$box" MOCK_LOG="$MOCK_LOG" MOCK_PANE="$PANE" \
       ${LETTERBOX_TMUX_SUBMIT+LETTERBOX_TMUX_SUBMIT="$LETTERBOX_TMUX_SUBMIT"} \
-      "$adapter" reviewer delegate smoke-test >/dev/null 2>"$work/stderr"
+      "$adapter" reviewer delegate smoke-test >"$work/stdout" 2>"$work/stderr"
   else
     rm -f "$registry"
     printf 'reviewer\t%s\n' "$SESSION" > "$patterns"
     env PATH="$mockbin:$PATH" LETTERBOX_DIR="$box" LETTERBOX_TMUX_PATTERNS="$patterns" \
       MOCK_LOG="$MOCK_LOG" MOCK_PANE="$PANE" \
       ${LETTERBOX_TMUX_SUBMIT+LETTERBOX_TMUX_SUBMIT="$LETTERBOX_TMUX_SUBMIT"} \
-      "$adapter" reviewer delegate smoke-test >/dev/null 2>"$work/stderr"
+      "$adapter" reviewer delegate smoke-test >"$work/stdout" 2>"$work/stderr"
   fi
 }
 
-assert_resolved() { # proves lookup happened rather than deferring
+assert_resolved() { # proves lookup happened rather than bailing pre-inject
   local how="$1"
-  grep -q 'deferred' "$work/stderr" && fail "adapter deferred on the $how path — the mock target was NOT found, so the refusal checks prove nothing"
+  grep -qE 'reason=(surface_not_found|adapter_unavailable)' "$work/stdout" && fail "adapter bailed pre-inject on the $how path — the mock target was NOT found, so the refusal checks prove nothing"
   case "$how" in
     registry) grep -q '^list-panes ' "$MOCK_LOG" || fail 'registry path never called list-panes — pane resolution not exercised';;
     patterns) grep -q '^has-session ' "$MOCK_LOG" || fail 'patterns path never called has-session — session resolution not exercised';;
@@ -87,16 +90,21 @@ for how in registry patterns; do
   injected && fail "[$how] tmux injected with LETTERBOX_TMUX_SUBMIT=0"
   (( fails == before )) && printf 'PASS: [%s] explicit 0 also refuses\n' "$how"
 
-  # --- opt-in: MUST inject to the resolved target, and MUST send Enter ---
+  # --- opt-in: MUST inject into the pinned %pane, and MUST send Enter ---
   before=$fails
   LETTERBOX_TMUX_SUBMIT=1 run_adapter "$how"
   assert_resolved "$how"
-  target=$([[ "$how" == registry ]] && printf '%s' "$PANE" || printf '%s' "$SESSION")
+  # The contract target is always a pinned %pane id: the registry path resolves
+  # to %1 directly; a session target is pinned via display-message first.
+  if [[ "$how" == patterns ]]; then
+    grep -q '^display-message -p ' "$MOCK_LOG" || fail "[$how] session target was never pinned to a %pane via display-message"
+  fi
+  target="$PANE"
   grep -qE "^send-keys -t ${target//%/\\%} -l " "$MOCK_LOG" \
-    || fail "[$how] opt-in did not send the doorbell text to the resolved target ($target)"
+    || fail "[$how] opt-in did not send the doorbell text to the pinned pane ($target)"
   grep -qE "^send-keys -t ${target//%/\\%} Enter$" "$MOCK_LOG" \
     || fail "[$how] opt-in sent text but never sent Enter"
-  (( fails == before )) && printf 'PASS: [%s] explicit opt-in injects into the resolved target (%s)\n' "$how" "$target"
+  (( fails == before )) && printf 'PASS: [%s] explicit opt-in injects into the pinned pane (%s)\n' "$how" "$target"
   unset LETTERBOX_TMUX_SUBMIT || true
 done
 

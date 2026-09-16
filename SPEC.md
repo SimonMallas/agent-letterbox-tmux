@@ -167,18 +167,22 @@ Prefer `printf … | letterbox …` (or another explicit stdin write) over shell
 ## Doorbells
 
 Letters are durable without a ring; the bell is how anyone is told. Without a bell, mail lands in a dead drop. The doorbell's only terminal content is a generic prompt. The tmux adapter
-emits exactly these two shapes and nothing else:
+emits exactly these shapes and nothing else:
 
 ```text
 📬 letterbox doorbell: unacked <type> in <LETTERBOX_DIR>/<agent>/inbox/ — please check
 📬 letterbox doorbell: unacked <type> in <LETTERBOX_DIR>/<agent>/inbox/ — please check · <8-lowercase-hex>
+📬 letterbox doorbell: unacked <type> from <sender> in <LETTERBOX_DIR>/<agent>/inbox/ — please check
+📬 letterbox doorbell: unacked <type> from <sender> in <LETTERBOX_DIR>/<agent>/inbox/ — please check · <8-lowercase-hex>
 ```
 
 The second is the v0.3 form. The token is an **additive** suffix: the v0.2 line remains a
 byte-prefix of the v0.3 line, so an existing v0.2 permitted-line rule matches both and a
 v0.3 reader must keep accepting the tokenless v0.2 line during any transition. Match by
 prefix or pattern, never by full-line equality — an exact-match rule silently rejects every
-token-bearing doorbell.
+token-bearing doorbell. The v0.4 form adds an optional ` from <sender>` middle insert naming
+the durable letter's sender (`^[A-Za-z][A-Za-z0-9._-]{0,31}$`); a malformed ` from ` clause
+rejects the line.
 
 Rules:
 
