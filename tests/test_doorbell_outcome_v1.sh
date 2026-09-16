@@ -93,6 +93,16 @@ for t in bash python3 grep awk sed shasum od tr date mktemp ln rm cat \
   [[ -n "$src" ]] && ln -sf "$src" "$ROOT/bin-notmux/$t"
 done
 
+# PATH farm WITH the fake tmux but WITHOUT python3: a missing runner must be
+# adapter_unavailable (non-retryable), never helper_timeout.
+mkdir -p "$ROOT/bin-nopython"
+for t in bash grep awk sed shasum od tr date mktemp ln rm cat \
+         dirname basename env sleep; do
+  src="$(command -v "$t" 2>/dev/null || true)"
+  [[ -n "$src" ]] && ln -sf "$src" "$ROOT/bin-nopython/$t"
+done
+ln -sf "$ROOT/bin/tmux" "$ROOT/bin-nopython/tmux"
+
 send_now() { # $1.. = env overrides (must trail base assignments to win)
   env BOX="$BOX" LETTERBOX_AGENT=tester LETTERBOX_DIR="$BOX" \
     LETTERBOX_DOORBELL="$LETTERBOX_DOORBELL" LETTERBOX_TMUX_SUBMIT="$LETTERBOX_TMUX_SUBMIT" \
@@ -187,6 +197,8 @@ check "wrapper: doorbell not executable" "LETTERBOX_DOORBELL=/etc/hosts" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=adapter_unavailable target=-'
 check "adapter: tmux missing from PATH"  "PATH=$ROOT/bin-notmux" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=adapter_unavailable target=-'
+check "missing python3 → adapter_unavailable (not helper_timeout)" "PATH=$ROOT/bin-nopython" \
+  'doorbell-outcome v=1 outcome=no_live_surface reason=adapter_unavailable target=-'
 check "wrapper: garbage child → unconfirmed" "LETTERBOX_DOORBELL=$ROOT/garbage.sh" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
 check "wrapper: double line → unconfirmed" "LETTERBOX_DOORBELL=$ROOT/double.sh" \
@@ -222,4 +234,4 @@ else
 fi
 
 echo "──"
-echo "tmux edition e2e: $pass/23 PASS"
+echo "tmux edition e2e: $pass/24 PASS"
