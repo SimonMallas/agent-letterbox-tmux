@@ -9,6 +9,7 @@ All notable changes to Agent Letterbox for tmux are documented here.
 - `message_body` keeps `---` lines after the envelope close, so an identical
   ACK retry with a fenced body matches the stored letter. A different body
   still collides.
+- `check --thread` skips unterminated letters instead of exiting 1.
 
 ## [0.3.3] — 2026-09-15
 
