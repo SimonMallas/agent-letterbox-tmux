@@ -76,7 +76,9 @@ LETTERBOX_TMUX_SUBMIT=1 \
 "$adapter" alpha delegate boot-test
 
 sleep 0.8
-received="$(tmux capture-pane -p -t "$pane" | tr -d '\n')"
+# -J joins soft wraps and keeps the wrap-edge space. Do not strip newlines:
+# that would glue a hard line break into a false one-line match.
+received="$(tmux capture-pane -p -J -t "$pane")"
 expected="📬 letterbox doorbell: unacked delegate in $box/alpha/inbox/ — please check"
 printf '%s\n' "$received" | grep -F "$expected" >/dev/null || {
   echo "doorbell not found in pane. got: $received" >&2

@@ -32,6 +32,7 @@ test:
 	$(call run_lifecycle,tests/test_lifecycle_v02.sh,lifecycle v0.2: PASS)
 	$(call run_lifecycle,tests/test_lifecycle_v03.sh,lifecycle v0.3: PASS)
 	./tests/tmux-doorbell-safety.sh
+	./tests/test_capture_join_predicate.sh
 	./tests/test_tmux_doorbell.sh
 	./tests/test_tmux_bootstrap.sh
 

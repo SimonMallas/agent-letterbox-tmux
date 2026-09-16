@@ -19,8 +19,9 @@ LETTERBOX_TMUX_SUBMIT=1 \
 "$adapter" receiver delegate smoke-test
 
 sleep 1
-# capture-pane wraps long terminal lines; compare after removing visual wraps.
-received="$(tmux capture-pane -p -t "$session" | tr -d '\n')"
+# -J joins soft wraps and keeps the wrap-edge space. Do not strip newlines:
+# that would glue a hard line break into a false one-line match.
+received="$(tmux capture-pane -p -J -t "$session")"
 expected="📬 letterbox doorbell: unacked delegate in $tmp/box/receiver/inbox/ — please check"
 printf '%s\n' "$received" | grep -F "$expected" >/dev/null
 printf '%s\n' 'tmux automatic doorbell test: PASS'
