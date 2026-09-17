@@ -99,7 +99,23 @@ cat > "$ROOT/spawn-hang.sh" <<'SH'
 sleep 60 & echo $! > "$GC_PID_FILE"
 sleep 60
 SH
-chmod +x "$ROOT/garbage.sh" "$ROOT/double.sh" "$ROOT/valid-exit1.sh" "$ROOT/line-hang.sh" "$ROOT/spawn-hang.sh"
+cat > "$ROOT/valid-ht-exit1.sh" <<'SH'
+#!/usr/bin/env bash
+echo 'doorbell-outcome v=1 outcome=no_live_surface reason=helper_timeout target=-'
+exit 1
+SH
+cat > "$ROOT/valid-sf-exit1.sh" <<'SH'
+#!/usr/bin/env bash
+echo 'doorbell-outcome v=1 outcome=no_live_surface reason=send_failed target=-'
+exit 1
+SH
+cat > "$ROOT/valid-pasted-exit1.sh" <<'SH'
+#!/usr/bin/env bash
+echo 'doorbell-outcome v=1 outcome=pasted_not_submitted reason=enter_failed target=%1'
+exit 1
+SH
+chmod +x "$ROOT/garbage.sh" "$ROOT/double.sh" "$ROOT/valid-exit1.sh" "$ROOT/line-hang.sh" "$ROOT/spawn-hang.sh" \
+  "$ROOT/valid-ht-exit1.sh" "$ROOT/valid-sf-exit1.sh" "$ROOT/valid-pasted-exit1.sh"
 
 # Minimal PATH farm without tmux (adapter-level adapter_unavailable case).
 for t in bash python3 grep awk sed shasum od tr date mktemp ln rm cat \
@@ -237,9 +253,16 @@ check "wrapper: garbage child → unconfirmed" "LETTERBOX_DOORBELL=$ROOT/garbage
   'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
 check "wrapper: double line → unconfirmed" "LETTERBOX_DOORBELL=$ROOT/double.sh" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
-# Exit-status precedence: a valid line after a NONZERO exit is never forwarded.
+# Exit-status precedence (ruled rows): submitted/pasted + nonzero → unconfirmed;
+# a valid no_live_surface line keeps its named reason even on nonzero exit.
 check "wrapper: valid line + nonzero exit → unconfirmed" "LETTERBOX_DOORBELL=$ROOT/valid-exit1.sh" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
+check "wrapper: pasted + nonzero exit → unconfirmed" "LETTERBOX_DOORBELL=$ROOT/valid-pasted-exit1.sh" \
+  'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
+check "wrapper: helper_timeout + nonzero exit still forwards (retryable)" "LETTERBOX_DOORBELL=$ROOT/valid-ht-exit1.sh" \
+  'doorbell-outcome v=1 outcome=no_live_surface reason=helper_timeout target=-'
+check "wrapper: send_failed + nonzero exit still forwards (named reason)" "LETTERBOX_DOORBELL=$ROOT/valid-sf-exit1.sh" \
+  'doorbell-outcome v=1 outcome=no_live_surface reason=send_failed target=-'
 # Runner-owned sentinel: a child exiting 124 on its own is NOT a timeout.
 check "child exit 124 in lookup → surface_not_found (not helper_timeout)" "TMUX_FAKE_LIST=exit124" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=surface_not_found target=-'
@@ -292,4 +315,4 @@ else
 fi
 
 echo "──"
-echo "tmux edition e2e: $pass/30 PASS"
+echo "tmux edition e2e: $pass/33 PASS"
