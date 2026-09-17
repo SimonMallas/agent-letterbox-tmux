@@ -193,6 +193,15 @@ Rules:
 - At-most-once notification over a durable at-least-once record.
 - Offline, busy, or unregistered agents still receive the letter in `inbox/`.
 
+Bounds budget (ring path). `LETTERBOX_DOORBELL_TIMEOUT` (default **1s**) bounds
+each mux call (lookup, liveness, resolve, notify, text, Enter). The longest
+legitimate run is 4 steps (lookup + resolve/notify + text + Enter) = 4 × step.
+The wrapper's whole-run backstop is 4 × step + 5s spawn margin = **9s** at the
+default, which with ~1s of cleanup sits strictly inside the caller's 10s
+deadline. Configuration limit: keep `LETTERBOX_DOORBELL_TIMEOUT` at 1s (integer
+seconds); raising it outruns the caller deadline unless this budget is
+re-derived.
+
 The tmux adapter implements this contract for live terminal agents (live pane registry first, optional static session-name patterns as fallback). The shared filesystem remains the universal transport.
 
 ## Compatibility

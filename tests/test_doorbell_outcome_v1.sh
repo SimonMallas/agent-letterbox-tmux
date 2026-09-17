@@ -30,8 +30,9 @@ printf '%s\n' "$*" >> "$log"
 case "${1:-}" in
   list-panes)
     case "${TMUX_FAKE_LIST:-ok}" in
-      ok)    printf '%%1\n';;
-      sleep) sleep "${TMUX_FAKE_SLEEP:-5}";;
+      ok)      printf '%%1\n';;
+      sleep)   sleep "${TMUX_FAKE_SLEEP:-5}";;
+      exit124) exit 124;;
     esac
     exit 0;;
   has-session)
@@ -47,12 +48,16 @@ case "${1:-}" in
         fail)   exit 1;;
         sleep)  sleep "${TMUX_FAKE_SLEEP:-5}";;
       esac
+    else
+      case "${TMUX_FAKE_DISPLAY:-ok}" in
+        ok) :;; sleep) sleep "${TMUX_FAKE_SLEEP:-5}";;
+      esac
     fi
     exit 0;;
   send-keys)
     if [[ "$*" == *" -l "* ]]; then
       case "${TMUX_FAKE_SEND:-ok}" in
-        ok) exit 0;; fail) exit 1;; sleep) sleep "${TMUX_FAKE_SLEEP:-5}";;
+        ok) exit 0;; fail) exit 1;; sleep) sleep "${TMUX_FAKE_SLEEP:-5}";; exit124) exit 124;;
       esac
     else
       case "${TMUX_FAKE_ENTER:-ok}" in
@@ -84,7 +89,17 @@ cat > "$ROOT/valid-exit1.sh" <<'SH'
 echo 'doorbell-outcome v=1 outcome=submitted reason=- target=%1'
 exit 1
 SH
-chmod +x "$ROOT/garbage.sh" "$ROOT/double.sh" "$ROOT/valid-exit1.sh"
+cat > "$ROOT/line-hang.sh" <<'SH'
+#!/usr/bin/env bash
+echo 'doorbell-outcome v=1 outcome=submitted reason=- target=%1'
+sleep 30
+SH
+cat > "$ROOT/spawn-hang.sh" <<'SH'
+#!/usr/bin/env bash
+sleep 60 & echo $! > "$GC_PID_FILE"
+sleep 60
+SH
+chmod +x "$ROOT/garbage.sh" "$ROOT/double.sh" "$ROOT/valid-exit1.sh" "$ROOT/line-hang.sh" "$ROOT/spawn-hang.sh"
 
 # Minimal PATH farm without tmux (adapter-level adapter_unavailable case).
 for t in bash python3 grep awk sed shasum od tr date mktemp ln rm cat \
@@ -203,8 +218,20 @@ check "wrapper: garbage child → unconfirmed" "LETTERBOX_DOORBELL=$ROOT/garbage
   'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
 check "wrapper: double line → unconfirmed" "LETTERBOX_DOORBELL=$ROOT/double.sh" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
-check "wrapper: valid line + exit 1 forwards" "LETTERBOX_DOORBELL=$ROOT/valid-exit1.sh" \
-  'doorbell-outcome v=1 outcome=submitted reason=- target=%1'
+# Exit-status precedence: a valid line after a NONZERO exit is never forwarded.
+check "wrapper: valid line + nonzero exit → unconfirmed" "LETTERBOX_DOORBELL=$ROOT/valid-exit1.sh" \
+  'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
+# Runner-owned sentinel: a child exiting 124 on its own is NOT a timeout.
+check "child exit 124 in lookup → surface_not_found (not helper_timeout)" "TMUX_FAKE_LIST=exit124" \
+  'doorbell-outcome v=1 outcome=no_live_surface reason=surface_not_found target=-'
+check "child exit 124 in send → send_failed (not unconfirmed)" "TMUX_FAKE_SEND=exit124" \
+  'doorbell-outcome v=1 outcome=no_live_surface reason=send_failed target=-'
+# A success line followed by a hang: the wrapper backstop kills, line or not.
+check "wrapper: valid line then hang → unconfirmed" "LETTERBOX_DOORBELL=$ROOT/line-hang.sh LETTERBOX_DOORBELL_TIMEOUT=1" \
+  'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
+# Bounded notify: a hung display-message still yields the outcome line.
+check "notify-only with hung display-message → notify_only" "LETTERBOX_TMUX_SUBMIT=0 TMUX_FAKE_DISPLAY=sleep TMUX_FAKE_SLEEP=5" \
+  'doorbell-outcome v=1 outcome=no_live_surface reason=notify_only target=-'
 
 # Ruling 5 provenance: the from clause names the durable letter's sender,
 # never the calling process identity (ME=tester, letter from relaybot).
@@ -233,5 +260,17 @@ else
   echo "FAIL: invalid sender omits the from clause"; echo "$out"; cat "$TMUX_FAKE_LOG"; exit 1
 fi
 
+# Owned-child cleanup: the runner kills the whole process group on timeout.
+export GC_PID_FILE="$ROOT/gc.pid"
+out="$(send_now LETTERBOX_DOORBELL="$ROOT/spawn-hang.sh" LETTERBOX_DOORBELL_TIMEOUT=1 GC_PID_FILE="$GC_PID_FILE")"
+one_line "$out"
+[[ "$out" == *"reason=unconfirmed"* ]] || { echo "FAIL: spawn-hang outcome: $out"; exit 1; }
+sleep 0.3
+if [[ -f "$GC_PID_FILE" ]] && kill -0 "$(cat "$GC_PID_FILE")" 2>/dev/null; then
+  echo "FAIL: grandchild survived the backstop kill"; exit 1
+else
+  echo "PASS: owned-child cleanup (process-group kill)"; pass=$((pass+1))
+fi
+
 echo "──"
-echo "tmux edition e2e: $pass/24 PASS"
+echo "tmux edition e2e: $pass/29 PASS"
