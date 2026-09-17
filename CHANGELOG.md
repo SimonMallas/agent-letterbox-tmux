@@ -2,6 +2,38 @@
 
 All notable changes to Agent Letterbox for tmux are documented here.
 
+## [0.4.0] — 2026-09-17
+
+### Changed
+
+Release 2 doorbell contract. The ring now reports exactly one
+`doorbell-outcome v=1` line per attempt — `submitted`,
+`pasted_not_submitted`, or `no_live_surface` with a named reason — owned by
+the helper wrapper, never by adapter prose. The typed doorbell line may
+name the durable letter's sender.
+
+- The wrapper is the sole outcome owner: the adapter's stdout is a private
+  pipe; exactly one valid contract line on exit 0 forwards, anything else
+  reports `unconfirmed` (`unparseable` is the consumer's verdict, never an
+  emitter token).
+- Two-step bounded inject (text, then Enter), each step bounded and
+  classified: `send_failed`, `pasted_not_submitted enter_failed`,
+  post-inject `unconfirmed`; only a proven pre-injection timeout is
+  `helper_timeout` (the one retryable class). Session-name registry targets
+  are pinned to their active `%pane` before injection.
+- Runner-owned timeout sentinel: a child exiting 124 on its own is
+  remapped and can never be misread as a timeout. Verified-runner check:
+  missing python3 or tmux is `adapter_unavailable` (non-retryable), and
+  without the bounder the wrapper fails closed — the adapter is never run
+  unbounded.
+- Ruled exit-status precedence: `submitted`/`pasted` claims after a
+  nonzero exit downgrade to `unconfirmed`; a valid `no_live_surface` line
+  keeps its named reason.
+- Ruling-5 sender clause resolved from the durable letter (never
+  `LETTERBOX_AGENT`), omitted when invalid — never `from -`.
+- Bounds budget documented in SPEC: 1s step budget, 4×step+5s wrapper
+  backstop (9s at default), strictly inside the caller's 10s deadline.
+
 ## [0.3.4] — 2026-09-16
 
 ### Fixed
