@@ -47,14 +47,40 @@ DONE-WHEN: Report actionable correctness findings.
 
 | Field | Required | Notes |
 |---|---|---|
-| `id` | yes | Stable message identity |
+| `id` | yes | Stable message identity. New ids are 1..243 ASCII `[A-Za-z0-9._:-]` |
+| `sent` | on new v0.5.0 letters | Publication UTC `YYYY-MM-DDTHH:MM:SSZ` from the same snapshot as a new send id. Replies record their own `sent`. Existing letters are unchanged |
 | `from` / `to` | yes | Lowercase agent ids |
 | `type` | yes | See types below |
-| `re` | derived on replies | Parent letter id for ownership replies |
+| `re` | derived on replies | Parent letter id for ownership replies. Explicit values are syntax-checked, not looked up |
 | `thread` | optional | Conversation root; defaults to parent id on derived replies |
+| `supersedes` | optional | Predecessor id from `send --supersedes`. Annotation, not authorization or truth. Replies do not inherit it |
+| `session` | optional | `LETTERBOX_SESSION` when set; empty or 1..64 `[A-Za-z0-9._:-]` |
 | `priority` | yes | `now`, `next`, or `whenever` |
 | `requires_ack` | yes | Decides task vs non-task handling |
-| `deadline` | optional | Operator-visible UTC deadline |
+| `deadline` | optional | Empty or a calendar-valid UTC instant |
+
+### Publication timestamps and supersession (v0.5.0)
+
+- A new send takes one UTC snapshot for both `sent` and the id prefix. A reply
+  keeps the parent-derived id and writes its own `sent`. An identical retry
+  does not publish a second body.
+- Explicit `re`, `thread`, and `supersedes`, plus parent and derived ids, are
+  1..243 ASCII bytes matching `[A-Za-z0-9._:-]`. Both query parsers use 243.
+  Bad input is refused before locks or publication. References are not sanitised
+  and are not looked up for ownership or existence.
+- The normalized slug maximum for a new send is
+  `max(0, 243 - (recipient_length + 10) - (29 + sender_length + type_length))`.
+  The refusal prints that actual maximum. The budget reserves
+  `--<recipient>--result`. There is no unlimited nested-reply promise. Long ids
+  that v0.4.0 could already reply to remain replyable when they fit the old
+  255-byte filename budget.
+- Supersession is an annotation, not certified truth. Query does not detect
+  body disagreement, authenticate a syntactically valid forged legacy field,
+  enforce foreign ownership, or repair a malformed envelope.
+- Strict query keeps its compact-id UTC fallback for older letters without
+  `sent`. Compatibility query reports unknown time for those letters.
+- No archive traversal and no archive verb. Archive presence must not be
+  reported as a complete absence.
 
 Types: `request`, `delegate`, `status`, `blocker`, `result`, `ack`, `nack`, `info`.
 

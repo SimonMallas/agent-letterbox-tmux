@@ -8,7 +8,20 @@
 
 **Letterbox gives an agent team a durable place to build memory together.**
 
-**Agent Letterbox for tmux turns separate coding-agent terminals into a live team — and every message between them into a durable record.**
+This release introduces **Queryable Envelope Memory (QEM)**. Every letter carries a typed envelope. Every new v0.5.0 send and reply also carries publication UTC in `sent`; a send can name an earlier record with `--supersedes`. Existing letters are unchanged. For older letters without `sent`, strict mode retains its UTC timestamp-from-ID fallback; compatibility mode reports unknown time. No database, no embeddings, no service.
+
+```bash
+letterbox query                                            # newest envelopes, scope stated
+letterbox query from=planner to=reviewer type=request state=open
+letterbox query thread=thread-id answered=no 'slug~=design'
+letterbox query superseded=head since=2026-01-01T00:00:00Z
+```
+
+- **What do I still owe?** — `letterbox query state=open answered=no type=request`
+
+`superseded=head` filters to envelopes not superseded in the scanned scope. Dangling supersession references are reported. The envelope is an annotation, not a truth certificate. Query does not read bodies or identify disagreements. An empty answer is scoped to the folders searched, from a non-atomic scan. Strict-v1 is the default; `--compat-v2` is explicit. No archive traversal. Query needs Python 3.9 or newer from the standard library. **Durable over persistent**: letters survive agent restarts, compaction, and new sessions as files on disk. That is file-backed recovery of the letters that were written, not a hardware-crash guarantee. See [query contracts and limitations](docs/query.md).
+
+**Agent Letterbox for tmux turns separate coding-agent terminals into a live team — and every message between them into a durable record.** This edition rings tmux panes. The v0.4.0 live-cycle notes are historical transport qualification, not evidence for this query release.
 
 ## What it is
 
