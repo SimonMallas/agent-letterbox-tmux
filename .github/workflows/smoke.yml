@@ -34,9 +34,9 @@ jobs:
           curl -fsSL -o "$archive" \
             "https://github.com/tmux/tmux/releases/download/${version}/tmux-${version}.tar.gz"
           if command -v sha256sum >/dev/null 2>&1; then
-            echo "${sha}  ${archive}" | sha256sum -c
+            echo "${sha}  ${archive}" | sha256sum -c -
           else
-            echo "${sha}  ${archive}" | shasum -a 256 -c
+            echo "${sha}  ${archive}" | shasum -a 256 -c -
           fi
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             sudo apt-get update
