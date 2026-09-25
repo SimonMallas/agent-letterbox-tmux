@@ -8,7 +8,11 @@ session="letterbox-doorbell-test-$$"
 tmp="$(mktemp -d)"
 trap 'tmux kill-session -t "$session" 2>/dev/null || true; rm -rf "$tmp"' EXIT
 
-command -v tmux >/dev/null 2>&1 || { echo 'tmux doorbell test: SKIP (tmux unavailable)'; exit 0; }
+command -v tmux >/dev/null 2>&1 || {
+  echo 'tmux doorbell test: SKIP (tmux unavailable)'
+  [[ "${LETTERBOX_REQUIRE_TMUX:-}" == 1 ]] && exit 1
+  exit 0
+}
 printf 'receiver\t%s\n' "$session" > "$tmp/patterns.tsv"
 # cat echoes received input into the pane, allowing capture-pane verification.
 tmux new-session -d -s "$session" 'cat'

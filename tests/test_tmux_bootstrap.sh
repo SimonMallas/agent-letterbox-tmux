@@ -9,7 +9,11 @@ tmp="$(mktemp -d)"
 session="lb-boot-$$"
 trap 'tmux kill-session -t "$session" 2>/dev/null || true; rm -rf "$tmp"' EXIT
 
-command -v tmux >/dev/null 2>&1 || { echo 'tmux bootstrap test: SKIP (tmux unavailable)'; exit 0; }
+command -v tmux >/dev/null 2>&1 || {
+  echo 'tmux bootstrap test: SKIP (tmux unavailable)'
+  [[ "${LETTERBOX_REQUIRE_TMUX:-}" == 1 ]] && exit 1
+  exit 0
+}
 
 box="$tmp/box"
 

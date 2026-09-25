@@ -25,5 +25,46 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
+      - name: Install pinned tmux 3.5a
+        run: |
+          set -euo pipefail
+          version=3.5a
+          sha=16216bd0877170dfcc64157085ba9013610b12b082548c7c9542cc0103198951
+          archive="$RUNNER_TEMP/tmux-${version}.tar.gz"
+          curl -fsSL -o "$archive" \
+            "https://github.com/tmux/tmux/releases/download/${version}/tmux-${version}.tar.gz"
+          if command -v sha256sum >/dev/null 2>&1; then
+            echo "${sha}  ${archive}" | sha256sum -c
+          else
+            echo "${sha}  ${archive}" | shasum -a 256 -c
+          fi
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends \
+              libevent-dev libncurses-dev pkg-config bison
+          else
+            brew install libevent pkgconf bison
+          fi
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP/tmux-${version}"
+          if [[ "$RUNNER_OS" != "Linux" ]]; then
+            export CPPFLAGS="-I$(brew --prefix libevent)/include ${CPPFLAGS:-}"
+            export LDFLAGS="-L$(brew --prefix libevent)/lib ${LDFLAGS:-}"
+          fi
+          ./configure --prefix="$RUNNER_TEMP/tmux-prefix" --disable-utf8proc
+          make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu)"
+          make install
+          echo "$RUNNER_TEMP/tmux-prefix/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/tmux-prefix/bin/tmux" -V | grep -qx "tmux ${version}"
+
       - name: Run test suite
-        run: make ci
+        env:
+          LETTERBOX_REQUIRE_TMUX: "1"
+        run: |
+          set -euo pipefail
+          make ci 2>&1 | tee "$RUNNER_TEMP/ci.log"
+          if grep -F 'tmux bootstrap test: SKIP' "$RUNNER_TEMP/ci.log" \
+            || grep -F 'tmux doorbell test: SKIP' "$RUNNER_TEMP/ci.log"; then
+            echo "native tmux tests skipped"
+            exit 1
+          fi
