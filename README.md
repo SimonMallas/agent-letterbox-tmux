@@ -171,6 +171,8 @@ You need Bash, Git, and tmux. No server, database, cloud account, or custom tmux
 
 ## Step 1 — Open a terminal and copy/paste this
 
+**If you are an agent,** read [the operating manual](skills/agent-letterbox/SKILL.md) first: doorbells, replies and the safety rules. ([More below](#learn-more).)
+
 Open any terminal window. You can either copy/paste the whole block below yourself, **or ask an existing coding agent**:
 
 > Set up Agent Letterbox for tmux using the README Quick Start. Do not change my tmux layout.
