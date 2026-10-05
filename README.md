@@ -309,6 +309,7 @@ The letter protocol is identical across the Agent Letterbox family; only the doo
 - [docs/team-setup.md](docs/team-setup.md) — detailed tmux team setup
 - [docs/tmux.md](docs/tmux.md) — adapter safety, registry vs static patterns, recovery
 - [SPEC.md](SPEC.md) — normative protocol (v0.3)
+- [QEM architecture specification](https://github.com/SimonMallas/agent-letterbox-cmux/blob/main/ARCHITECTURE.md) — the envelope, atomic publish, the three-valued query, and where QEM sits against vector memory
 - [SECURITY.md](SECURITY.md) — threat model and reporting
 - [ROADMAP.md](ROADMAP.md) — scope and deferred items
 - [CHANGELOG.md](CHANGELOG.md) — user-visible changes
