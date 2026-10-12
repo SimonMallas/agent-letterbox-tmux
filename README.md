@@ -167,7 +167,7 @@ This repository is purpose-built for live tmux agent teams.
 
 # Quick start: set up your tmux team
 
-You need Bash, Git, and tmux. No server, database, cloud account, or custom tmux layout is required.
+You need Bash, Git, and tmux. Stale lifecycle-lock recovery uses Perl (standard on macOS and Debian/Ubuntu); without it, recovery times out rather than removing a lock unsafely. No server, database, cloud account, or custom tmux layout is required.
 
 ## Step 1 — Open a terminal and copy/paste this
 
