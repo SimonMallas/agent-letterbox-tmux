@@ -1,12 +1,14 @@
 ---
 name: agent-letterbox
 description: Durable cross-agent coordination for live tmux teams. Use when receiving an Agent Letterbox doorbell, checking a Letterbox inbox, replying to another agent, registering a live tmux pane, or handling agent-to-agent work handoffs.
-version: 0.3.0
+version: 0.5.0
 author: Agent Letterbox
 license: MIT
 ---
 
 # Agent Letterbox
+
+**Helper version:** see repository `VERSION`. This skill includes the v0.5 query and supersession workflow.
 
 ## Core rule
 
@@ -87,6 +89,37 @@ Non-task disposal:
 letterbox file <message-id-or-path>
 ```
 
+PATH-form inbound `result`/`nack` requires `--read`. Explicit IDs file directly.
+
+**Low-ceremony close (v0.3).** A `requires_ack: false` letter may also be closed in one step with `letterbox reply <id> result|nack <slug>` — no prior ACK. `ack` on a non-task letter is refused.
+
+## Past letters and revisions (v0.5)
+
+`letterbox query` searches envelope headers in participants' `inbox/` and `processed/`, not bodies. It is read-only and requires Python 3.9+; no agent identity is needed. Query reads the same Letterbox directory as other commands (`LETTERBOX_DIR` or the configured default). Use its physical path: compatibility mode rejects symlinks in any path component (including macOS `/tmp`). Resolve the existing box with `pwd -P` and override only this query:
+
+```bash
+(cd /path/to/existing-box && LETTERBOX_DIR="$(pwd -P)" letterbox query)
+```
+
+Do not create a replacement mailbox or change live configuration just to query.
+
+```bash
+letterbox query from=planner to=reviewer type=request state=open
+letterbox query superseded=head
+letterbox query --compat-v2 type=request answered=unknown
+```
+
+Default output is `query-scope v=1`, counts and envelope cards. `--compat-v2` returns JSON with schema `letterbox.query.compat.v2`, including diagnostics and unknown facts. Check scope, completeness and exit status before drawing conclusions: exit 2 is invalid/incomplete, not “no mail”. Neither mode proves global absence, delivery or completion; archives are not traversed. Read the actual letter before acting on a match.
+
+To annotate a replacement, use the predecessor's exact id, not a display id or token:
+
+```bash
+printf '%s\n' 'Revised design; use this proposal.' |
+  letterbox send reviewer info revised-design --supersedes <prior-id>
+```
+
+This publishes a new letter; it does not rewrite, close or authorize replacing the predecessor. Sender ownership is not checked. Add `--now` when a live bell is needed. See repository `docs/query.md` for filters, ordering, unknowns and supersession limits.
+
 ## Stdin bodies
 
 Prefer `printf '%s\n' '…' | letterbox …`. Avoid unquoted heredocs when the body may contain `$` or backticks. Quote the delimiter if you must use a heredoc (`<<'EOF'`).
@@ -116,7 +149,4 @@ letterbox nudge <ref>        # re-ring an open letter; changes no lifecycle stat
 letterbox token <8hex>       # glance a doorbell token: unhandled / already filed / unknown
 ```
 
-A `requires_ack: false` request may close in one shot with `result`/`nack` — no ACK needed.
-Filing an inbound `result`/`nack` **from a path** requires `--read`, because shell globs
-always yield paths; an explicit letter id is a deliberate reference and files directly.
 Ambiguous references refuse rather than guessing.
