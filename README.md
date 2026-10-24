@@ -285,6 +285,16 @@ Each live session self-registers its current tmux pane, avoiding title or sessio
 
 If you installed an earlier checkout from `main`, reinstall from the current branch and use the lifecycle commands above. v0.3 adds operational verbs (`check --recent|--thread`, `read`, `progress`, `nudge`, `token`), additive doorbell tokens, one-shot `result|nack` on `requires_ack: false` letters, and `file <path> --read` for path-form terminal replies. v0.2 letters remain valid. v0.2 introduced an optional additive `thread` field; existing letters remain valid and older readers ignore it. Early scripts that send `ack`, `nack`, or `result` directly must use `letterbox reply` instead, and delegates must include `--ack`. All agents in one team should run the same helper version.
 
+## Agent Letter Bridge integrated mode
+
+When [Agent Letter Bridge](https://github.com/SimonMallas/agent-letter-bridge) is configured with `ALB_BUS_BINARY="$HOME/.local/bin/letterbox"`, it delivers the durable phone letter first and then calls:
+
+```bash
+letterbox ring <recipient> <type> <letter-id>
+```
+
+`ring` only announces a regular letter already present in that recipient's inbox whose `id`, `to`, and `type` headers match. It loads this Letterbox's generated `env.sh` when the Bridge service supplies `LETTERBOX_DIR` but no doorbell configuration; an explicitly configured doorbell remains authoritative. The Bridge setup probe uses the same outcome contract. This requires a release containing the integrated `ring` verb.
+
 ## Test the installation
 
 ```bash

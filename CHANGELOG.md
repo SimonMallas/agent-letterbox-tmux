@@ -2,6 +2,10 @@
 
 All notable changes to Agent Letterbox for tmux are documented here.
 
+## Unreleased
+
+- Add `letterbox ring <recipient> <type> <letter-id>` for Agent Letter Bridge integrated mode. It announces only a matching durable inbox letter and loads the configured box environment when a Bridge service supplies `LETTERBOX_DIR` without a doorbell setting.
+
 ## v0.5.0 — 2026-09-25 (tmux edition)
 
 - Add read-only `letterbox query`: strict-v1 envelope cards by default and

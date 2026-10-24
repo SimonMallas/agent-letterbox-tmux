@@ -38,6 +38,10 @@ the full id, and a malformed suffix is not a permitted line.
 **A ring is not a read.** `submitted`, `pasted_not_submitted` and `no_live_surface` describe
 delivery only. None means the letter was read, handled, or that a turn started.
 
+## Agent Letter Bridge integrated mode
+
+If Agent Letter Bridge is configured with this public helper as `ALB_BUS_BINARY`, it calls `letterbox ring <recipient> <type> <letter-id>` only after it has written the durable relay letter. `ring` validates that the matching regular letter is in the recipient inbox before it announces anything. A Bridge service that has `LETTERBOX_DIR` but not the pane environment uses the box's generated `env.sh`; an explicit doorbell setting takes precedence.
+
 ## Startup and resume
 
 1. If you are running in tmux, register your current pane (pane ids change after relaunch):
