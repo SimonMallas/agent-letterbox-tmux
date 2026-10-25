@@ -76,6 +76,13 @@ command -v tmux >/dev/null 2>&1 || { emit_outcome no_live_surface adapter_unavai
 # python3 is adapter_unavailable (non-retryable), never helper_timeout.
 command -v python3 >/dev/null 2>&1 || { emit_outcome no_live_surface adapter_unavailable -; exit 0; }
 
+# Enter waits after the text: an agent TUI that detects pastes takes an Enter
+# arriving with the text as part of the paste and never submits it (Muse Code,
+# 25 Oct). Whole seconds 0..5; 0 is an explicit fast path. Checked before any
+# command runs, so a bad value touches no terminal.
+enter_delay="${LETTERBOX_DOORBELL_ENTER_DELAY:-2}"
+[[ "$enter_delay" =~ ^[0-5]$ ]] || { emit_outcome no_live_surface invalid_enter_delay -; exit 0; }
+
 # v0.3: additive opaque token. The v0.2 line remains a byte-prefix, so v0.2
 # permitted-line rules still match. Never a slug, body, path or secret.
 # Ruling 5 middle insert: name the durable letter's sender, but only when the
@@ -187,6 +194,7 @@ if [[ "${LETTERBOX_TMUX_SUBMIT:-0}" == 1 ]]; then
     fi
     exit 0
   fi
+  sleep "$enter_delay"
   enter_ec=0
   bounded_cmd "$bound_s" tmux send-keys -t "$target" Enter || enter_ec=$?
   if [[ "$enter_ec" -ne 0 ]]; then
