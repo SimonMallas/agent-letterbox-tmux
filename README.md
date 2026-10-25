@@ -214,6 +214,8 @@ Setup automatically creates one shared Letterbox, agent inboxes, the global `let
 
 > `--automatic-doorbells` lets Letterbox type the generic doorbell line into a live agent pane (`LETTERBOX_TMUX_SUBMIT=1`). Use it only for dedicated agent panes: like any terminal-input tool, it can submit text already typed in a target terminal.
 
+> Before pressing Enter, Letterbox waits `LETTERBOX_DOORBELL_ENTER_DELAY` seconds (default 2, whole seconds 0–5), because some agent apps treat an Enter sent together with the text as part of a paste and never submit it. If your agent's doorbell sits typed but unsent, raise it; if your agent never needs the pause, set it to 0.
+
 Stay in this same terminal for the next step; you do not need to open another one yet.
 
 ## Step 2 — Open tmux your way
