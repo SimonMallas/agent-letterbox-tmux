@@ -210,7 +210,7 @@ letterbox tmux setup --agents planner,reviewer,builder,researcher --automatic-do
 source "$HOME/.agent-letterbox/env.sh"
 ```
 
-Setup automatically creates one shared Letterbox, agent inboxes, the global `letterbox` launcher, the shared Agent Letterbox skill, and the live-pane registration registry.
+Setup automatically creates one shared Letterbox, agent inboxes, the global `letterbox` launcher, the shared Agent Letterbox skill (also linked for Claude Code when it is installed), and the live-pane registration registry.
 
 > `--automatic-doorbells` lets Letterbox type the generic doorbell line into a live agent pane (`LETTERBOX_TMUX_SUBMIT=1`). Use it only for dedicated agent panes: like any terminal-input tool, it can submit text already typed in a target terminal.
 
