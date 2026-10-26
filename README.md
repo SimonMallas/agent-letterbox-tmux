@@ -196,6 +196,8 @@ To update later, run the same installer again:
 curl -fsSL https://raw.githubusercontent.com/SimonMallas/agent-letterbox-tmux/main/install.sh | bash
 ```
 
+To add an agent later, run setup again with just its name, for example `letterbox tmux setup --agents tester --automatic-doorbells`. Agents that are already running keep their doorbells; only registrations whose pane has closed are cleared.
+
 ### Option B — Manual Git install
 
 Use this if you want to inspect the source, modify it, or contribute:

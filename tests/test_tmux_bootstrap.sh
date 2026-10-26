@@ -72,6 +72,16 @@ tmux list-panes -a -F '#{pane_id}' | grep -Fx "$pane" >/dev/null || {
   exit 1
 }
 
+# --- setup again to add an agent keeps the running ones (26 Oct) ---
+printf 'ghost\t%%999999\tgone\t2026-01-01T00:00:00Z\n' >> "$box/tmux-agents.tsv"
+HOME="$tmp/home" LETTERBOX_BIN_DIR="$tmp/bin" LETTERBOX_SKILLS_DIR="$tmp/skills" \
+  "$letterbox" tmux setup --agents gamma --dir "$box" --automatic-doorbells >/dev/null
+grep -q $'^alpha\t'"$pane"$'\t' "$box/tmux-agents.tsv" \
+  || { echo 'setup dropped a live registration' >&2; exit 1; }
+! grep -q '^ghost' "$box/tmux-agents.tsv" || { echo 'setup kept a dead registration' >&2; exit 1; }
+test -d "$box/gamma/inbox"
+printf '%s\n' 'tmux setup keeps live registrations: PASS'
+
 # --- registry-first doorbell ---
 LETTERBOX_DIR="$box" \
 LETTERBOX_TMUX_REGISTRY="$box/tmux-agents.tsv" \

@@ -134,6 +134,21 @@ tmux_target_live() {
   fi
 }
 
+# Setup runs again whenever an agent is added. Emptying the registry then
+# silenced every agent already running until each one registered again, so
+# keep the rows whose target is still live and drop only the dead ones.
+keep_live_tmux_registrations() {
+  local registry="$1" tmp line target
+  [[ -f "$registry" ]] || { : > "$registry"; return; }
+  tmp="$(mktemp "$(dirname "$registry")/.tmux-agents.tmp.XXXXXX")"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    target="$(printf '%s\n' "$line" | cut -f2)"
+    tmux_target_live "$target" || continue
+    printf '%s\n' "$line" >> "$tmp"
+  done < "$registry"
+  mv "$tmp" "$registry"
+}
+
 cmd_tmux_register() {
   local agent="${1:?usage: letterbox tmux register <agent>}" registry target owner tmp session
   need_agent "$agent"
@@ -199,7 +214,7 @@ cmd_tmux_setup() {
   mkdir -p "$BOX" "$BOX/locks" "$(dirname "$DEFAULT_DIR_FILE")" "$launcher_dir"
   cmd_init "${agent_list[@]}" >/dev/null
   printf '%s\n' "$BOX" > "$DEFAULT_DIR_FILE"
-  : > "$BOX/tmux-agents.tsv"
+  keep_live_tmux_registrations "$BOX/tmux-agents.tsv"
   if [[ ! -f "$BOX/tmux-patterns.tsv" ]]; then
     cat > "$BOX/tmux-patterns.tsv" <<'PAT'
 # Optional static fallback: agent<TAB>tmux-session-name
