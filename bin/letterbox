@@ -169,6 +169,10 @@ cmd_tmux_register() {
   printf '%s\t%s\t%s\t%s\n' "$agent" "$target" "${session:-}" "$(now)" >> "$tmp"
   mv "$tmp" "$registry"
   printf 'registered: %s → %s (session %s)\n' "$agent" "$target" "${session:-(unknown)}"
+  # The registry names the pane for the doorbell. The agent's own commands
+  # (check, file, reply) still need its name; `tmux run` exports it.
+  [[ "${LETTERBOX_AGENT:-}" == "$agent" ]] ||
+    printf 'Commands from this agent need its name: export LETTERBOX_AGENT=%s\n' "$agent"
 }
 
 cmd_tmux_status() {

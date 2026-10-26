@@ -82,6 +82,12 @@ grep -q $'^alpha\t'"$pane"$'\t' "$box/tmux-agents.tsv" \
 test -d "$box/gamma/inbox"
 printf '%s\n' 'tmux setup keeps live registrations: PASS'
 
+# --- register outside `run` names the LETTERBOX_AGENT the agent needs (26 Oct) ---
+out="$(env -u LETTERBOX_AGENT TMUX="$(tmux display-message -p '#{socket_path}'),$$,0" TMUX_PANE="$pane" \
+  LETTERBOX_DIR="$box" LETTERBOX_TMUX_REGISTRY="$box/tmux-agents.tsv" "$letterbox" tmux register alpha)"
+[[ "$out" == *"export LETTERBOX_AGENT=alpha"* ]] || { echo "register does not name LETTERBOX_AGENT: $out" >&2; exit 1; }
+printf '%s\n' 'tmux register names LETTERBOX_AGENT: PASS'
+
 # --- registry-first doorbell ---
 LETTERBOX_DIR="$box" \
 LETTERBOX_TMUX_REGISTRY="$box/tmux-agents.tsv" \
