@@ -190,7 +190,7 @@ source "$HOME/.agent-letterbox/env.sh"
 
 This downloads a local copy and sets up the team. If you are new to GitHub, you do not need to understand Git first—copying the block is enough.
 
-To update later, run the same installer again:
+To update later, run the same installer again (more in [Updating](#updating)):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SimonMallas/agent-letterbox-tmux/main/install.sh | bash
@@ -284,6 +284,22 @@ letterbox tmux run agent-zero -- <your-agent-cli>
 ```
 
 Each live session self-registers its current tmux pane, avoiding title or session-name collisions.
+
+## Updating
+
+`letterbox --version` shows the version you have, and [CHANGELOG.md](CHANGELOG.md) says what each version changed. Every agent runs the same `letterbox`, so one update covers the whole team. Your Letterbox, letters, agents and registrations are kept, and running agents use the new version from their next `letterbox` command.
+
+**Installed with the installer (Option A):** run it again:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SimonMallas/agent-letterbox-tmux/main/install.sh | bash
+```
+
+It says which version you now have. You don't need to run setup again: if your team was set up before v0.5.3, the update also adds the Agent Letterbox skill link that setup has made since then.
+
+**Installed with Git (Option B):** run `git pull` in the folder you cloned. If your team was set up before v0.5.3, run setup once more the way you add an agent (with `--dir` if you used it): it adds the Agent Letterbox skill link and keeps everything else.
+
+**Added only the skill with `npx skills add`:** run `npx skills update`.
 
 ## Using a pre-release checkout
 
