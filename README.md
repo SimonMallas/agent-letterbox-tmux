@@ -171,7 +171,7 @@ This repository is purpose-built for live tmux agent teams.
 
 # Quick start: set up your tmux team
 
-You need Bash, Git, and tmux. Stale lifecycle-lock recovery uses Perl (standard on macOS and Debian/Ubuntu); without it, recovery times out rather than removing a lock unsafely. No server, database, cloud account, or custom tmux layout is required.
+You need Bash, Git, and tmux. Locks and stale lifecycle-lock recovery use Perl (standard on macOS and Debian/Ubuntu's perl-base); without it, letterbox refuses to lock rather than trusting a platform mkdir, whose exit code is not reliable everywhere (uutils coreutils 0.10.0 on Ubuntu 25.10+ can report success when its mkdir(2) failed). No server, database, cloud account, or custom tmux layout is required.
 
 ## Step 1 — Open a terminal and copy/paste this
 
