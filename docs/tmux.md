@@ -5,7 +5,7 @@ Agent Letterbox rings live agents with a durable-letter-first pattern:
 ```text
 letter written to inbox
 → tmux adapter finds a live registered pane (or static session)
-→ injects the generic doorbell text (when SUBMIT is enabled)
+→ injects the generic doorbell text (SUBMIT is on by default)
 → agent checks its durable inbox
 ```
 
@@ -39,23 +39,23 @@ export LETTERBOX_TMUX_PATTERNS="$LETTERBOX_DIR/tmux-patterns.tsv"
 
 Static session-name matching is a convenience fallback for agents that do not self-register. It is never proof of identity when several panes share a session or titles collide. Prefer live registration for multi-agent teams.
 
-## Enable automatic agent input
+## Automatic agent input (the default)
 
-By default the adapter only posts a tmux status-line notification. To inject the standardized doorbell and Enter into the live pane:
+Every letter rings. By default the adapter types the standardized doorbell and Enter into the live pane. With typing refused, it only posts a tmux status-line notification:
 
 ```bash
 # Typing is the default (setup writes this for you); refuse it with:
 export LETTERBOX_TMUX_SUBMIT=0
 ```
 
-This uses:
+Typing uses:
 
 ```bash
 tmux send-keys -t <pane-or-session> -l '<doorbell>'
 tmux send-keys -t <pane-or-session> Enter
 ```
 
-Setup flag `--automatic-doorbells` (alias `--submit`) turns this on in the generated environment.
+Setup writes `LETTERBOX_TMUX_SUBMIT=1` into the generated environment. The old `--automatic-doorbells` flag (alias `--submit`) is still accepted and changes nothing.
 
 ## Safety
 

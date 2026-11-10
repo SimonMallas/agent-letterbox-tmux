@@ -12,7 +12,7 @@ From the Agent Letterbox for tmux checkout:
 chmod +x bin/letterbox adapters/*.sh tests/*.sh
 export PATH="$PWD/bin:$PATH"
 
-letterbox tmux setup --agents planner,reviewer,builder,researcher --automatic-doorbells
+letterbox tmux setup --agents planner,reviewer,builder,researcher
 source ~/.agent-letterbox/env.sh
 ```
 
@@ -31,12 +31,12 @@ It also links:
 - `~/.local/bin/letterbox` → this checkout’s CLI
 - `~/.agents/skills/agent-letterbox` → the bundled skill
 
-`--automatic-doorbells` (alias `--submit`) enables `LETTERBOX_TMUX_SUBMIT=1` — inject the doorbell line + Enter into the live agent pane. Leave it out if you only want a tmux status-line notification.
+Setup writes `LETTERBOX_TMUX_SUBMIT=1`: the doorbell line + Enter are typed into the live agent pane. If you only want a tmux status-line notification, set `LETTERBOX_TMUX_SUBMIT=0`; `check` then warns `doorbell: typing is off`. The old `--automatic-doorbells` flag (alias `--submit`) is still accepted and changes nothing.
 
 Use another shared location when needed:
 
 ```bash
-letterbox tmux setup --agents planner,reviewer --dir /shared/letterbox --automatic-doorbells
+letterbox tmux setup --agents planner,reviewer --dir /shared/letterbox
 source /shared/letterbox/env.sh
 ```
 
@@ -125,7 +125,7 @@ See [lifecycle.md](lifecycle.md) for the full state machine.
 
 ## Safety
 
-Automatic terminal input is powerful and intentionally opt-in. `--automatic-doorbells` / `LETTERBOX_TMUX_SUBMIT=1` may submit text already waiting in a target terminal buffer. Use it only for dedicated agent panes.
+Automatic terminal input is powerful, and it is the default: every letter rings, and setup writes `LETTERBOX_TMUX_SUBMIT=1`. It may submit text already waiting in a target terminal buffer, so use it only for dedicated agent panes.
 
 The doorbell contains no task content. The durable letter remains the real message and fallback if an agent is offline.
 

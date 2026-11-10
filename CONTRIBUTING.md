@@ -5,7 +5,7 @@
 **Supported**
 
 - Durable Markdown letters, reply-first handling, atomic publication, advisory locks
-- Automatic opt-in tmux doorbells to live registered panes (or static session patterns)
+- Automatic tmux doorbells to live registered panes, typed by default (or static session patterns)
 - Local and SSH/headless tmux workflows where users arrange sessions themselves
 
 **Not in scope**
