@@ -9,7 +9,7 @@
 #   2) LETTERBOX_TMUX_PATTERNS (static fallback)
 #      agent<TAB>tmux-session-name
 #
-# Submit is opt-in: LETTERBOX_TMUX_SUBMIT=1 injects the doorbell + Enter.
+# The doorbell is typed, then Enter, by default. Only LETTERBOX_TMUX_SUBMIT=0 stops it.
 set -uo pipefail
 
 to="${1:?recipient}"
@@ -187,8 +187,11 @@ if [[ "$target" != %* ]]; then
   target="$pane"
 fi
 
-# Input injection is explicit opt-in: Enter can submit unrelated buffer text.
-if [[ "${LETTERBOX_TMUX_SUBMIT:-0}" == 1 ]]; then
+# Typing the line and pressing Enter is the doorbell: without it the agent does
+# not wake. Enter can also submit text already typed in that pane; that risk is
+# accepted. Only an explicit LETTERBOX_TMUX_SUBMIT=0 stops typing, and the agent's own check
+# then warns.
+if [[ "${LETTERBOX_TMUX_SUBMIT:-1}" != 0 ]]; then
   send_ec=0
   bounded_cmd "$bound_s" tmux send-keys -t "$target" -l "$line" || send_ec=$?
   if [[ "$send_ec" -ne 0 ]]; then
