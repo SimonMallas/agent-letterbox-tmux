@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Mock-backed proof that adapters/tmux.sh never injects keystrokes into a live
-# target unless the caller explicitly opts in via LETTERBOX_TMUX_SUBMIT=1.
+# Mock-backed proof that adapters/tmux.sh types the doorbell into the resolved
+# target by default, and that only LETTERBOX_TMUX_SUBMIT=0 stops it.
 #
 # Runs anywhere: a real tmux server is never started. The adapter calls `tmux`
 # directly, so the mock is placed on PATH.
@@ -14,6 +14,7 @@
 # doorbell-outcome v=1: the contract target is always a pinned %pane id, so a
 # session target is resolved to its active pane before any injection.
 set -uo pipefail
+unset LETTERBOX_TMUX_SUBMIT # each case below sets it on purpose; an inherited value must not decide one
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 adapter="$root/adapters/tmux.sh"
@@ -75,22 +76,23 @@ assert_resolved() { # proves lookup happened rather than bailing pre-inject
 }
 
 for how in registry patterns; do
-  # --- unset: must never inject, but must still notify ---
+  # --- unset: the doorbell is typed into the pinned pane, then Enter ---
   unset LETTERBOX_TMUX_SUBMIT || true
   before=$fails
   run_adapter "$how"
   assert_resolved "$how"
-  injected && fail "[$how] tmux send-keys called without LETTERBOX_TMUX_SUBMIT=1"
-  grep -q '^display-message ' "$MOCK_LOG" || fail "[$how] expected the safe display-message to still fire"
-  (( fails == before )) && printf 'PASS: [%s] no keystroke injection without opt-in\n' "$how"
+  grep -qE "^send-keys -t ${PANE//%/\\%} -l " "$MOCK_LOG" || fail "[$how] the default did not type the doorbell"
+  grep -qE "^send-keys -t ${PANE//%/\\%} Enter$" "$MOCK_LOG" || fail "[$how] the default typed but never sent Enter"
+  (( fails == before )) && printf 'PASS: [%s] the doorbell is typed by default\n' "$how"
 
-  # --- explicit 0: same ---
+  # --- explicit 0: the only way to stop typing; the notice still fires ---
   before=$fails
   LETTERBOX_TMUX_SUBMIT=0 run_adapter "$how"
   injected && fail "[$how] tmux injected with LETTERBOX_TMUX_SUBMIT=0"
-  (( fails == before )) && printf 'PASS: [%s] explicit 0 also refuses\n' "$how"
+  grep -q '^display-message ' "$MOCK_LOG" || fail "[$how] expected the display-message notice with typing off"
+  (( fails == before )) && printf 'PASS: [%s] explicit 0 stops typing\n' "$how"
 
-  # --- opt-in: MUST inject into the pinned %pane, and MUST send Enter ---
+  # --- explicit 1: MUST inject into the pinned %pane, and MUST send Enter ---
   before=$fails
   LETTERBOX_TMUX_SUBMIT=1 run_adapter "$how"
   assert_resolved "$how"
@@ -101,10 +103,10 @@ for how in registry patterns; do
   fi
   target="$PANE"
   grep -qE "^send-keys -t ${target//%/\\%} -l " "$MOCK_LOG" \
-    || fail "[$how] opt-in did not send the doorbell text to the pinned pane ($target)"
+    || fail "[$how] explicit 1 did not send the doorbell text to the pinned pane ($target)"
   grep -qE "^send-keys -t ${target//%/\\%} Enter$" "$MOCK_LOG" \
-    || fail "[$how] opt-in sent text but never sent Enter"
-  (( fails == before )) && printf 'PASS: [%s] explicit opt-in injects into the pinned pane (%s)\n' "$how" "$target"
+    || fail "[$how] explicit 1 sent text but never sent Enter"
+  (( fails == before )) && printf 'PASS: [%s] explicit 1 injects into the pinned pane (%s)\n' "$how" "$target"
   unset LETTERBOX_TMUX_SUBMIT || true
 done
 
