@@ -44,7 +44,8 @@ Static session-name matching is a convenience fallback for agents that do not se
 By default the adapter only posts a tmux status-line notification. To inject the standardized doorbell and Enter into the live pane:
 
 ```bash
-export LETTERBOX_TMUX_SUBMIT=1
+# Typing is the default (setup writes this for you); refuse it with:
+export LETTERBOX_TMUX_SUBMIT=0
 ```
 
 This uses:
@@ -58,7 +59,7 @@ Setup flag `--automatic-doorbells` (alias `--submit`) turns this on in the gener
 
 ## Safety
 
-`LETTERBOX_TMUX_SUBMIT=1` can submit text already waiting in the target terminal buffer. Use it only for dedicated agent panes where that risk is acceptable.
+Typing is on by default and can submit text already waiting in the target terminal buffer. Use it only for dedicated agent panes; `LETTERBOX_TMUX_SUBMIT=0` turns it off, and `check` warns `doorbell: typing is off`.
 
 The doorbell contains no task content — only a short generic nudge such as:
 
@@ -116,7 +117,7 @@ Do not `file` it, and do not hand-delete the `.md.ack` sidecar.
 
 - You can ring panes over SSH if you attach to the same tmux server that holds the registered panes.
 - Letterbox files still need a shared filesystem path (`LETTERBOX_DIR`). SSH alone does not replicate mailboxes between machines.
-- On headless hosts, prefer status-line notifications unless agent panes are dedicated and `LETTERBOX_TMUX_SUBMIT=1` is an accepted risk.
+- On headless hosts, set `LETTERBOX_TMUX_SUBMIT=0` for status-line notifications; typing stays the default where agent panes are dedicated.
 
 ## Validate
 

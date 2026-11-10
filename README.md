@@ -66,7 +66,7 @@ One shared letter store and protocol — four native doorbell adapters, one edit
 - **[cmux](https://github.com/SimonMallas/agent-letterbox-cmux)** — primary entry point
 - [tmux](https://github.com/SimonMallas/agent-letterbox-tmux)
 - [Herdr](https://github.com/SimonMallas/agent-letterbox-herdr)
-- [Zellij](https://github.com/SimonMallas/agent-letterbox-zellij) — terminal ring requires `LETTERBOX_ZELLIJ_SUBMIT=1`
+- [Zellij](https://github.com/SimonMallas/agent-letterbox-zellij) — the ring types by default; `LETTERBOX_ZELLIJ_SUBMIT=0` turns it off
 
 You are reading the **tmux** edition.
 
@@ -222,7 +222,7 @@ source "$HOME/.agent-letterbox/env.sh"
 
 Setup automatically creates one shared Letterbox, agent inboxes, the global `letterbox` launcher, the shared Agent Letterbox skill (also linked into `~/.claude/skills` when `~/.claude` exists), and the live-pane registration registry.
 
-> `--automatic-doorbells` lets Letterbox type the generic doorbell line into a live agent pane (`LETTERBOX_TMUX_SUBMIT=1`). Use it only for dedicated agent panes: like any terminal-input tool, it can submit text already typed in a target terminal.
+> The doorbell types into a live agent pane by default (`LETTERBOX_TMUX_SUBMIT=1`, written by setup). It can submit text already typed in a target terminal, so it is meant for dedicated agent panes. `LETTERBOX_TMUX_SUBMIT=0` turns typing off; `check` then warns `doorbell: typing is off`. Setup still accepts `--automatic-doorbells` for older runbooks.
 
 > Before pressing Enter, Letterbox waits `LETTERBOX_DOORBELL_ENTER_DELAY` seconds (default 2, whole seconds 0–5), because some agent apps treat an Enter sent together with the text as part of a paste and never submit it. If your agent's doorbell sits typed but unsent, raise it; if your agent never needs the pause, set it to 0.
 
