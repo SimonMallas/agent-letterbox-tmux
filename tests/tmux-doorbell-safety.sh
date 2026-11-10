@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Mock-backed proof that adapters/tmux.sh never injects keystrokes into a live
-# target unless the caller explicitly opts in via LETTERBOX_TMUX_SUBMIT=1.
+# Mock-backed proof that adapters/tmux.sh types the doorbell into the resolved
+# target by default, and that only LETTERBOX_TMUX_SUBMIT=0 stops it.
 #
 # Runs anywhere: a real tmux server is never started. The adapter calls `tmux`
 # directly, so the mock is placed on PATH.
@@ -14,6 +14,7 @@
 # doorbell-outcome v=1: the contract target is always a pinned %pane id, so a
 # session target is resolved to its active pane before any injection.
 set -uo pipefail
+unset LETTERBOX_TMUX_SUBMIT # each case below sets it on purpose; an inherited value must not decide one
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 adapter="$root/adapters/tmux.sh"
@@ -102,9 +103,9 @@ for how in registry patterns; do
   fi
   target="$PANE"
   grep -qE "^send-keys -t ${target//%/\\%} -l " "$MOCK_LOG" \
-    || fail "[$how] opt-in did not send the doorbell text to the pinned pane ($target)"
+    || fail "[$how] explicit 1 did not send the doorbell text to the pinned pane ($target)"
   grep -qE "^send-keys -t ${target//%/\\%} Enter$" "$MOCK_LOG" \
-    || fail "[$how] opt-in sent text but never sent Enter"
+    || fail "[$how] explicit 1 sent text but never sent Enter"
   (( fails == before )) && printf 'PASS: [%s] explicit 1 injects into the pinned pane (%s)\n' "$how" "$target"
   unset LETTERBOX_TMUX_SUBMIT || true
 done
