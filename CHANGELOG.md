@@ -2,7 +2,7 @@
 
 All notable changes to Agent Letterbox for tmux are documented here.
 
-## [0.7.1] — unreleased (tmux edition)
+## [0.7.1] — 2026-11-10 (tmux edition)
 
 - `check` reads `LETTERBOX_CHECK_STALE_DAYS`, as documented; it read a private name before. A value that is not a whole number is ignored instead of aborting `check`, and a broken link that sorts first in the inbox no longer hides every letter after it.
 - A progress note from another agent is shown without terminal control characters.
