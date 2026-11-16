@@ -37,6 +37,16 @@ exec $real_date "\$@"
 EOF
 )" date
 
+# This test exercises the shell date probe, not the optional Python batcher.
+# The fake date below still needs Python for its GNU -d emulation.
+export REAL_PYTHON_FOR_TEST="$(command -v python3)"
+install_bin "$work/bin" "$(cat <<'EOF'
+#!/usr/bin/env bash
+[[ "${1:-}" != -I ]] || exit 127
+exec "$REAL_PYTHON_FOR_TEST" "$@"
+EOF
+)" python3
+
 # If date parsing is skipped, mtime would look fresh (live).
 install_bin "$work/bin" "$(cat <<'EOF'
 #!/usr/bin/env bash
