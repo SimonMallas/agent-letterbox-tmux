@@ -68,12 +68,24 @@ printf 'alpha\t%%1\n' > "$BOX/patterns.tsv"
 
 emit_real() { # $1 = token ("" for v0.2 shape); prints the line the adapter sent
   local log="$BOX/mock.log"; : > "$log"
-  MOCK_LOG="$log" MOCK_PANE='%1' \
-  PATH="$mockbin:$PATH" \
-  LETTERBOX_DIR=/box LETTERBOX_TMUX_PATTERNS="$BOX/patterns.tsv" LETTERBOX_TMUX_SUBMIT=1 \
-  LETTERBOX_DOORBELL_TOKEN="$1" \
-    "$ADPT" alpha info someslug >/dev/null 2>&1 || true
-  sed -n 's/^send-keys -t %1 -l //p' "$log" | head -1
+  local outcome="$BOX/adapter.out" error="$BOX/adapter.err" rc=0 line
+  env -i PATH="$mockbin:$PATH" HOME="$BOX" TMPDIR="$BOX" LC_ALL=C \
+    MOCK_LOG="$log" MOCK_PANE='%1' LETTERBOX_DIR=/box \
+    LETTERBOX_TMUX_PATTERNS="$BOX/patterns.tsv" LETTERBOX_TMUX_SUBMIT=1 \
+    LETTERBOX_DOORBELL_TOKEN="$1" LETTERBOX_DOORBELL_TIMEOUT=10 \
+    LETTERBOX_DOORBELL_ENTER_DELAY=0 \
+    "$ADPT" alpha info someslug >"$outcome" 2>"$error" || rc=$?
+  line="$(sed -n 's/^send-keys -t %1 -l //p' "$log" | head -1)"
+  if [[ "$rc" -ne 0 || -z "$line" ]] || ! grep -q '^doorbell-outcome v=1 outcome=submitted ' "$outcome"; then
+    printf 'FAIL: mock adapter capture failed (exit %s)\nadapter outcome:\n' "$rc" >&2
+    cat "$outcome" >&2
+    printf 'adapter stderr:\n' >&2
+    cat "$error" >&2
+    printf 'mock log:\n' >&2
+    cat "$log" >&2
+    return 0
+  fi
+  printf '%s\n' "$line"
 }
 
 real_v02="$(emit_real '')"
@@ -82,7 +94,7 @@ real_v03="$(emit_real a1b2c3d4)"
 if [[ -n "$real_v02" ]]; then
   pass "real adapter emits a doorbell line (fixture is wired to adapters/tmux.sh)"
 else
-  fail "adapter produced no line — fixture would be vacuous"
+  fail "mock adapter capture failed — see diagnostics above"
 fi
 # Mutation hooks: prove exit 0 and set -e abort after assertion 1 cannot green-wash.
 if [[ "${LETTERBOX_MUTATE_EARLY_EXIT0:-0}" == 1 ]]; then

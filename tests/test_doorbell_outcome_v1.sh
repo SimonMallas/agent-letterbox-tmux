@@ -197,7 +197,7 @@ else
   echo "FAIL: injected line carries sender + v0.3 token"; cat "$TMUX_FAKE_LOG"; exit 1
 fi
 check "list-panes timeout → helper_timeout" "TMUX_FAKE_LIST=sleep TMUX_FAKE_SLEEP=5" \
-  'doorbell-outcome v=1 outcome=no_live_surface reason=helper_timeout target=-'
+  'doorbell-outcome v=1 outcome=no_live_surface reason=lookup_spent target=-'
 check "registry pane dead → surface_not_found" "LETTERBOX_TMUX_REGISTRY=$ROOT/registry-dead.tsv" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=surface_not_found target=-'
 check "registry session form → resolved pinned pane" "LETTERBOX_TMUX_REGISTRY=$ROOT/registry-session.tsv" \
@@ -207,11 +207,11 @@ check "session resolve fail → surface_not_found" "LETTERBOX_TMUX_REGISTRY=$ROO
 check "session resolve bad value → surface_not_found" "LETTERBOX_TMUX_REGISTRY=$ROOT/registry-session.tsv TMUX_FAKE_RESOLVE=badval" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=surface_not_found target=-'
 check "session resolve timeout → helper_timeout" "LETTERBOX_TMUX_REGISTRY=$ROOT/registry-session.tsv TMUX_FAKE_RESOLVE=sleep TMUX_FAKE_SLEEP=5" \
-  'doorbell-outcome v=1 outcome=no_live_surface reason=helper_timeout target=-'
+  'doorbell-outcome v=1 outcome=no_live_surface reason=lookup_spent target=-'
 check "patterns fallback session → submitted" "LETTERBOX_TMUX_REGISTRY=$ROOT/missing.tsv LETTERBOX_TMUX_PATTERNS=$ROOT/patterns.tsv" \
   'doorbell-outcome v=1 outcome=submitted reason=- target=%1'
 check "has-session timeout → helper_timeout" "LETTERBOX_TMUX_REGISTRY=$ROOT/missing.tsv LETTERBOX_TMUX_PATTERNS=$ROOT/patterns.tsv TMUX_FAKE_HASSESSION=sleep TMUX_FAKE_SLEEP=5" \
-  'doorbell-outcome v=1 outcome=no_live_surface reason=helper_timeout target=-'
+  'doorbell-outcome v=1 outcome=no_live_surface reason=lookup_spent target=-'
 check "send reported fail → send_failed" "TMUX_FAKE_SEND=fail" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=send_failed target=-'
 check "send timeout → unconfirmed"       "TMUX_FAKE_SEND=sleep TMUX_FAKE_SLEEP=5" \
@@ -259,8 +259,8 @@ check "wrapper: valid line + nonzero exit → unconfirmed" "LETTERBOX_DOORBELL=$
   'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
 check "wrapper: pasted + nonzero exit → unconfirmed" "LETTERBOX_DOORBELL=$ROOT/valid-pasted-exit1.sh" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
-check "wrapper: helper_timeout + nonzero exit still forwards (retryable)" "LETTERBOX_DOORBELL=$ROOT/valid-ht-exit1.sh" \
-  'doorbell-outcome v=1 outcome=no_live_surface reason=helper_timeout target=-'
+check "wrapper: helper_timeout is spent, not forwarded" "LETTERBOX_DOORBELL=$ROOT/valid-ht-exit1.sh" \
+  'doorbell-outcome v=1 outcome=no_live_surface reason=lookup_spent target=-'
 check "wrapper: send_failed + nonzero exit still forwards (named reason)" "LETTERBOX_DOORBELL=$ROOT/valid-sf-exit1.sh" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=send_failed target=-'
 # Runner-owned sentinel: a child exiting 124 on its own is NOT a timeout.
