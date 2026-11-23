@@ -183,6 +183,8 @@ You need Bash, Git, and tmux. Locks and stale lifecycle-lock recovery use Perl (
 
 Open any terminal window. You can either copy/paste the whole block below yourself, **or ask an existing coding agent**:
 
+Whenever this guide shows a command block, copy the whole block, paste it into a terminal, and press Enter.
+
 > Set up Agent Letterbox for tmux using the README Quick Start. Do not change my tmux layout.
 
 ### Or: add the skill straight to your agent
