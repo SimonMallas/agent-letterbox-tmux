@@ -4,6 +4,8 @@
 
 ## Ring the bell. Create the team. Build the memories.
 
+**[Install / Quick start](#quick-start-set-up-your-tmux-team)**
+
 **Letterbox does not make agents write. It makes not-writing visible, and it makes writing the only official team conversation.** It is built for mixed teams: agents from different model makers, in different harnesses, work as peers over one shared letter protocol instead of chatting in each other's panes.
 
 ![Eight coding agents handing work to each other over Agent Letterbox — panes ring as letters land](assets/hero/letterbox-team.gif)
@@ -185,7 +187,7 @@ Open any terminal window. You can either copy/paste the whole block below yourse
 
 Whenever this guide shows a command block, copy the whole block, paste it into a terminal, and press Enter.
 
-> Set up Agent Letterbox for tmux using the README Quick Start. Do not change my tmux layout.
+> Set up Agent Letterbox for tmux using https://github.com/SimonMallas/agent-letterbox-tmux. Read and follow the README Quick Start without changing my tmux layout. Configure it for my existing agents, keep everything local, and show me the resulting Letterbox directory and how to start using it. Do not push or publish anything.
 
 ### Or: add the skill straight to your agent
 
